@@ -9,7 +9,28 @@ permissions:
   contents: read
 
 jobs:
-  docs-links:
+  # Lint, format check, type check, unit and integration tests (in-process PGlite), documentation
+  # link check and build: the same command as in CLAUDE.md.
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install dependencies
+        run: |
+          npm install --global pnpm@12.15.0
+          pnpm install --frozen-lockfile
+
+      - name: Verify
+        run: pnpm verify
+
+  # Fails on any known high or critical vulnerability in the dependencies.
+  audit:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -17,18 +38,98 @@ jobs:
 
       - uses: actions/setup-node@v7.0.0
         with:
-          node-version: 24.21.0
+          node-version-file: .nvmrc
 
-      # Same command as in CLAUDE.md: pinned versions, installed without a package.json into
-      # node_modules (ignored by Git). The check itself runs offline.
-      - name: Check documentation links
-        run: npm install --no-save --no-package-lock remark-cli@12.0.1 remark-validate-links@13.1.0 && npx remark . --frail --quiet --no-stdout
+      - name: Audit dependencies
+        run: |
+          npm install --global pnpm@12.15.0
+          pnpm audit --audit-level high
+
+  # The same integration tests as in verify, against a real PostgreSQL (DATABASE_URL is set).
+  integration-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18.6-alpine3.24
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install dependencies
+        run: |
+          npm install --global pnpm@12.15.0
+          pnpm install --frozen-lockfile
+
+      - name: Integration tests on PostgreSQL
+        run: pnpm test:integration
+
+  # Playwright, on a desktop and a phone viewport. The site starts by itself.
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install dependencies
+        run: |
+          npm install --global pnpm@12.15.0
+          pnpm install --frozen-lockfile
+
+      - name: Install the browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: pnpm test:e2e
+
+  # Builds the Docker image, starts the whole stack and checks /health.
+  docker:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Start the stack
+        run: |
+          echo "POSTGRES_PASSWORD=ci-smoke-test-password" > .env
+          docker compose up --build --detach --wait --wait-timeout 180
+
+      - name: Smoke test /health
+        run: curl --fail --silent --show-error --retry 5 --retry-delay 3 http://127.0.0.1:4321/health
+
+      - name: Show the logs
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose down --volumes
 
   # Branch protection requires this job only, by its name: never rename or remove it. List every
   # other job in its needs; it fails when any of them failed, was cancelled or was skipped.
   ci:
     if: always()
-    needs: [docs-links]
+    needs: [verify, audit, integration-postgres, e2e, docker]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:

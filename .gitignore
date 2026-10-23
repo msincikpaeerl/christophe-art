@@ -1,2 +1,7 @@
-# Installed by the documentation link check (CLAUDE.md, Commands).
 node_modules/
+dist/
+.astro/
+.env
+uploads/
+playwright-report/
+test-results/

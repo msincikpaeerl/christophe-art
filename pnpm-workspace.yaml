@@ -1,0 +1,4 @@
+minimumReleaseAgeExclude:
+  - prettier-plugin-astro@1.1.2
+allowBuilds:
+  esbuild: true
