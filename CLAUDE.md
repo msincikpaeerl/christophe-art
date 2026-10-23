@@ -19,7 +19,7 @@ Foundation only (stack, tooling, tests, CI, Docker). The only page is a placehol
 
 ## Commands
 
-Package manager: pnpm (`corepack enable`), Node 24.21.0 (`.nvmrc`).
+Package manager: pnpm (`npm install --global pnpm@12.15.0`), Node 24.21.0 (`.nvmrc`).
 
 | Task                                       | Command                                           |
 | ------------------------------------------ | ------------------------------------------------- |

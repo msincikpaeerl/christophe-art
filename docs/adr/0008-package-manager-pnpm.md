@@ -9,7 +9,7 @@ Dependencies must install the same way on every machine and in CI, quickly, and 
 
 ## Decision
 
-Use pnpm. The version is pinned in `package.json` (`packageManager`) and activated with Corepack (`corepack enable`). Dependency versions are pinned exactly (no `^` or `~`), the lock file `pnpm-lock.yaml` is committed, and CI installs with `--frozen-lockfile`. The Node version is pinned in `.nvmrc` and `engines`. `pnpm audit --audit-level high` runs in CI.
+Use pnpm. The version is pinned in `package.json` (`packageManager`) and installed with `npm install --global pnpm@<version>` in CI and Docker (Corepack is not used). Dependency versions are pinned exactly (no `^` or `~`), the lock file `pnpm-lock.yaml` is committed, and CI installs with `--frozen-lockfile`. The Node version is pinned in `.nvmrc` and `engines`. `pnpm audit --audit-level high` runs in CI.
 
 ## Alternatives considered
 

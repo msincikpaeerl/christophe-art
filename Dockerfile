@@ -1,8 +1,8 @@
 # Multi-stage build: the final image holds production dependencies only and runs as a non-root user.
 
 FROM node:24.21.0-alpine3.24 AS base
-ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN corepack enable
+# Same pnpm version as `packageManager` in package.json.
+RUN npm install --global pnpm@12.15.0
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 

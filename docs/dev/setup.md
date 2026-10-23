@@ -5,7 +5,7 @@ How to run Christophe Art on your machine. Choices are explained in [`docs/adr/`
 ## Requirements
 
 - Node 24.21.0 (`.nvmrc`; with nvm, run `nvm use`).
-- pnpm 12.15.0 through Corepack: `corepack enable`. The right version is picked from `package.json`.
+- pnpm 12.15.0 (`npm install --global pnpm@12.15.0`). It is the version named in `package.json`.
 - Docker is only needed to run the production stack. Tests and development do not need it.
 
 ## First start

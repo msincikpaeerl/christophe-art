@@ -23,7 +23,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          corepack enable
+          npm install --global pnpm@12.15.0
           pnpm install --frozen-lockfile
 
       - name: Verify
@@ -42,7 +42,7 @@ jobs:
 
       - name: Audit dependencies
         run: |
-          corepack enable
+          npm install --global pnpm@12.15.0
           pnpm audit --audit-level high
 
   # The same integration tests as in verify, against a real PostgreSQL (DATABASE_URL is set).
@@ -74,7 +74,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          corepack enable
+          npm install --global pnpm@12.15.0
           pnpm install --frozen-lockfile
 
       - name: Integration tests on PostgreSQL
@@ -93,7 +93,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          corepack enable
+          npm install --global pnpm@12.15.0
           pnpm install --frozen-lockfile
 
       - name: Install the browser
