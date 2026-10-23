@@ -1,7 +1,54 @@
 # Setup
 
-Local setup, commands and environment variables. Written by the first ticket, once the stack is chosen.
+How to run Christophe Art on your machine. Choices are explained in [`docs/adr/`](../adr/0002-web-framework-astro.md).
+
+## Requirements
+
+- Node 24.21.0 (`.nvmrc`; with nvm, run `nvm use`).
+- pnpm 12.15.0 through Corepack: `corepack enable`. The right version is picked from `package.json`.
+- Docker is only needed to run the production stack. Tests and development do not need it.
+
+## First start
+
+```
+pnpm install
+cp .env.example .env
+```
+
+Edit `.env`. `DATABASE_URL` is the only required variable. Without a PostgreSQL server, use `DATABASE_URL=pglite://memory`: an in-memory database that is empty at each start (refused when `NODE_ENV=production`).
+
+Then:
+
+```
+pnpm db:migrate   # applies the migrations to the database named by DATABASE_URL
+pnpm dev          # development server with reload
+```
+
+For a production-like run without Docker: `pnpm build`, then `pnpm start`. `pnpm start` validates the configuration, applies the migrations, and starts the server.
+
+## Environment variables
+
+Listed with comments in [`.env.example`](../../.env.example). They are validated by `src/server/config.ts` at start. When one is missing or invalid, the application stops and names it, for example `DATABASE_URL: is required but missing`. Never commit a `.env` file.
+
+## Database migrations
+
+The schema is `src/server/schema.ts`. After changing it, run `pnpm db:generate`, review the new SQL file in `drizzle/`, and commit it. Never edit a migration that is already committed. The application applies pending migrations every time it starts.
+
+## Run the stack in Docker
+
+```
+cp .env.example .env     # then set POSTGRES_PASSWORD
+docker compose up --build --detach --wait
+curl http://localhost:4321/health
+docker compose down
+```
+
+`compose.yml` starts PostgreSQL and the application. The application starts only once the database reports healthy, restarts unless stopped, and keeps data in the named volumes `db-data` (database) and `uploads` (uploaded images). The image is built from the multi-stage [`Dockerfile`](../../Dockerfile): production dependencies only, a non-root user, and a health check on `/health`. Agents cannot run Docker; CI builds the image and runs this smoke test.
+
+## Dependencies
+
+Versions are pinned exactly and `pnpm-lock.yaml` is committed. Before adding or upgrading a package, check `npm view <package> version`, install with `pnpm add --save-exact`, and commit the lock file. `pnpm audit --audit-level high` must pass.
 
 ## Documentation link check
 
-CI checks that every relative link in the Markdown files points to an existing file and heading (see [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)).
+`pnpm docs:links` checks that every relative link in the Markdown files points to an existing file and heading. It is part of `pnpm verify`.

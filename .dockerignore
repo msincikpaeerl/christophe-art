@@ -1,0 +1,9 @@
+node_modules
+dist
+.astro
+.git
+.env
+uploads
+test-results
+playwright-report
+docs

@@ -1,3 +1,16 @@
 # Architecture
 
-Components of Christophe Art and how they fit together. Written by the first ticket, once the stack is chosen; decisions are in [`docs/adr/`](../adr/0001-record-architecture-decisions.md).
+Components of Christophe Art and how they fit together. Decisions are in [`docs/adr/`](../adr/0001-record-architecture-decisions.md).
+
+```
+browser ──► Astro server (Node, src/pages) ──► PostgreSQL (Drizzle)
+                      │
+                      └──► uploaded images on disk (UPLOADS_DIR, a Docker volume)
+```
+
+- **Web server**: [Astro in server mode](../adr/0002-web-framework-astro.md). Pages and endpoints are in `src/pages/`.
+- **Server code**: plain TypeScript in `src/server/`, independent of the framework: configuration (`config.ts`), database (`database.ts`, `schema.ts`), health check (`health.ts`), logging (`logger.ts`), and the start-up scripts (`start.ts`, `migrate-cli.ts`).
+- **Start-up** (`src/server/start.ts`): validate the environment, apply the database migrations, then load the built Astro server.
+- **Database**: [PostgreSQL through Drizzle](../adr/0003-database-postgresql-drizzle.md); migrations in `drizzle/`.
+- **Health**: `GET /health` answers 200 `{"status":"ok"}` when the database answers, and 503 otherwise.
+- **Logs**: [JSON lines from Pino](../adr/0007-logging-pino.md), secrets redacted.

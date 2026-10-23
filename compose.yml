@@ -1,0 +1,36 @@
+# The production stack: the website and its PostgreSQL database.
+# Set POSTGRES_PASSWORD in a .env file next to this file (see .env.example).
+services:
+  db:
+    image: postgres:18.6-alpine3.24
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: christophe
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: christophe
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U christophe -d christophe']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://christophe:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/christophe
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - '${PORT:-4321}:4321'
+    volumes:
+      - uploads:/data/uploads
+
+volumes:
+  db-data:
+  uploads:
