@@ -15,6 +15,11 @@ const schema = z
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
       .default('info'),
+    /** Serves the design showcase page (`/dev/design`). Off by default; never enable in production. */
+    DEV_PAGES: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
   })
   .refine((env) => !(env.NODE_ENV === 'production' && env.DATABASE_URL.startsWith('pglite://')), {
     path: ['DATABASE_URL'],

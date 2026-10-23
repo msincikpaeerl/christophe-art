@@ -1,0 +1,47 @@
+---
+// Grid thumbnail of an artwork: the image keeps its own ratio (never cropped), no filter,
+// frame or shadow; only a thin line separates it from the wall.
+interface Props {
+  href: string;
+  title: string;
+  /** Engraved-plate line, for example "H 62 × W 48 × D 20 cm". */
+  dimensions?: string;
+  price?: string;
+}
+
+const { href, title, dimensions, price } = Astro.props;
+---
+
+<article class="card">
+  <a class="media" href={href} aria-label={title}>
+    <slot />
+  </a>
+  <h3>{title}</h3>
+  {dimensions && <p class="label">{dimensions}</p>}
+  {price && <p class="price">{price}</p>}
+</article>
+
+<style>
+  .card {
+    transition: transform var(--motion-base) var(--motion-ease);
+  }
+  .card:hover {
+    transform: translateY(var(--lift-distance));
+  }
+  .media {
+    display: block;
+    border: var(--line-width) solid var(--line);
+  }
+  h3 {
+    margin: var(--space-3) 0 var(--space-1);
+    font-size: var(--text-lg);
+  }
+  p {
+    margin: 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card:hover {
+      transform: none;
+    }
+  }
+</style>

@@ -1,0 +1,183 @@
+---
+// Development-only showcase of the palette and every component (served when DEV_PAGES=true).
+import ArtworkCard from '../../components/ArtworkCard.astro';
+import LoadingState from '../../components/LoadingState.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { loadConfig } from '../../server/config.ts';
+
+export const prerender = false;
+
+if (!loadConfig().DEV_PAGES) {
+  return new Response(null, { status: 404 });
+}
+
+const swatches = [
+  ['--color-anthracite', 'Anthracite'],
+  ['--color-steel', 'Steel'],
+  ['--color-light-steel', 'Light steel'],
+  ['--color-gallery-white', 'Gallery white'],
+  ['--color-paper', 'Paper'],
+  ['--color-copper', 'Copper'],
+  ['--color-copper-bright', 'Copper bright'],
+  ['--color-copper-deep', 'Copper deep'],
+  ['--color-night-blue', 'Night blue'],
+] as const;
+const sizes = ['xs', 'sm', 'base', 'lg', 'xl', '2xl', '3xl'] as const;
+const spaces = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+---
+
+<BaseLayout
+  title="Design system"
+  description="Palette and components of the site."
+  noindex
+  alternates={{ fr: '/dev/design', en: '/dev/design' }}
+>
+  <div class="container page" data-testid="design-page">
+    <h1>Design system</h1>
+    <p>Every colour, type style and component of the site. Development only.</p>
+
+    <section aria-labelledby="palette">
+      <h2 id="palette">Palette</h2>
+      <ul class="swatches">
+        {swatches.map(([token, name]) => (
+          <li>
+            <span class="chip" style={`background: var(${token})`} />
+            <span class="label">{name}</span>
+            <span class="label">{token}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section aria-labelledby="type">
+      <h2 id="type">Typography</h2>
+      <h2>Heading two</h2>
+      <h3>Heading three</h3>
+      <h4>Heading four</h4>
+      <p>
+        Body text in a neutral sans-serif, set for long reading. A{' '}
+        <a href="/dev/design">link in deep copper</a> keeps AA contrast on the gallery wall.
+      </p>
+      <p class="label">H 62 × W 48 × D 20 cm</p>
+      <ul class="sizes">
+        {sizes.map((size) => (
+          <li style={`font-size: var(--text-${size})`}>Text {size}</li>
+        ))}
+      </ul>
+    </section>
+
+    <section aria-labelledby="spacing">
+      <h2 id="spacing">Spacing</h2>
+      <ul class="spaces">
+        {spaces.map((step) => (
+          <li>
+            <span class="label">space-{step}</span>
+            <span class="bar" style={`width: var(--space-${String(step)})`} />
+          </li>
+        ))}
+      </ul>
+    </section>
+
+    <section aria-labelledby="components">
+      <h2 id="components">Components</h2>
+      <p>
+        <span class="plate">Sculpture</span>
+        <span class="plate">Drawing</span>
+        <span class="price">1 800 €</span>
+      </p>
+      <p>
+        <a class="button" href="/dev/design">
+          Enquire
+        </a>
+      </p>
+
+      <h3>Artwork cards</h3>
+      <div class="grid">
+        <ArtworkCard
+          href="/dev/design"
+          title="Hex tree"
+          dimensions="H 62 × W 48 × D 20 cm"
+          price="1 800 €"
+        >
+          <div class="placeholder portrait"></div>
+        </ArtworkCard>
+        <ArtworkCard href="/dev/design" title="Night sea" dimensions="H 50 × W 100 cm">
+          <div class="placeholder landscape"></div>
+        </ArtworkCard>
+      </div>
+
+      <h3>Loading state</h3>
+      <LoadingState />
+
+      <h3>Anthracite section</h3>
+      <div class="surface-dark dark-sample">
+        <p>
+          Text on anthracite, with <a href="/dev/design">a bright copper link</a>.
+        </p>
+        <p class="label">Light steel label</p>
+        <a class="button" href="/dev/design">
+          Enquire
+        </a>
+      </div>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .page {
+    padding-block: var(--space-7);
+  }
+  section {
+    margin-block: var(--space-8);
+  }
+  .swatches,
+  .sizes,
+  .spaces {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .swatches {
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  }
+  .swatches li {
+    display: grid;
+    gap: var(--space-1);
+  }
+  .chip {
+    height: var(--space-8);
+    border: var(--line-width) solid var(--line);
+  }
+  .spaces li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .spaces .label {
+    min-width: 6rem;
+  }
+  .bar {
+    height: var(--space-3);
+    background: var(--accent-secondary);
+  }
+  .grid {
+    display: grid;
+    gap: var(--space-6);
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    align-items: start;
+  }
+  .placeholder {
+    background: var(--surface-dark-raised);
+  }
+  .portrait {
+    aspect-ratio: 4 / 5;
+  }
+  .landscape {
+    aspect-ratio: 2 / 1;
+  }
+  .dark-sample {
+    padding: var(--space-6);
+  }
+</style>

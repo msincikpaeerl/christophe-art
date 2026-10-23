@@ -1,0 +1,34 @@
+---
+import HexPattern from './HexPattern.astro';
+
+interface Props {
+  label?: string;
+}
+
+const { label = 'Loading' } = Astro.props;
+---
+
+<div class="loading" role="status">
+  <HexPattern id="hex-loading" />
+  <span class="label">{label}</span>
+</div>
+
+<style>
+  .loading {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 12rem;
+    overflow: hidden;
+    border: var(--line-width) solid var(--line);
+    animation: breathe 2.4s ease-in-out infinite;
+  }
+  .label {
+    position: relative;
+  }
+  @keyframes breathe {
+    50% {
+      border-color: var(--accent);
+    }
+  }
+</style>

@@ -1,0 +1,72 @@
+---
+import { artistName, labels, legalLinks, socialUrl, type Locale } from '../site.ts';
+import HexPattern from './HexPattern.astro';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const text = labels[locale];
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer surface-dark">
+  <HexPattern id="hex-footer" />
+  <div class="container inner">
+    <p class="name">{artistName}</p>
+    <nav aria-label={text.footerNav}>
+      <ul>
+        {legalLinks.map((item) => (
+          <li>
+            <a href={item.href}>{text.legal[item.key]}</a>
+          </li>
+        ))}
+        <li>
+          <a href={socialUrl} rel="noopener noreferrer me" target="_blank">
+            {text.social}
+          </a>
+        </li>
+      </ul>
+    </nav>
+    <p class="label">
+      © {year} {artistName} · {text.rights}
+    </p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    position: relative;
+    overflow: hidden;
+    margin-top: var(--space-9);
+    border-top: var(--line-width) solid var(--decor-on-dark);
+  }
+  .inner {
+    position: relative;
+    display: grid;
+    gap: var(--space-4);
+    padding-block: var(--space-7);
+  }
+  .name {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-size: var(--text-xl);
+  }
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  li a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+  }
+  .label {
+    margin: 0;
+  }
+</style>

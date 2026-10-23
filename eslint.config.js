@@ -31,4 +31,9 @@ export default defineConfig(
     },
   },
   { files: ['**/*.js', '**/*.mjs'], ...tseslint.configs.disableTypeChecked },
+  {
+    // The Astro parser cannot type JSX elements returned from `.map()`, so this rule would flag every list.
+    files: ['**/*.astro'],
+    rules: { '@typescript-eslint/no-unsafe-return': 'off' },
+  },
 );

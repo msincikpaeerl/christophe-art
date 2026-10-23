@@ -1,0 +1,125 @@
+---
+import { artistName, labels, navigation, type Locale } from '../site.ts';
+import HexPattern from './HexPattern.astro';
+
+interface Props {
+  locale: Locale;
+  /** Address of the same page in each language; defaults to the current page. */
+  alternates?: Record<Locale, string> | undefined;
+  /** Path of the current section, to mark it in the navigation. */
+  currentPath?: string;
+}
+
+const { locale, alternates, currentPath = Astro.url.pathname } = Astro.props;
+const text = labels[locale];
+const switchLinks = alternates ?? { fr: currentPath, en: currentPath };
+const locales: Locale[] = ['fr', 'en'];
+---
+
+<header class="site-header">
+  <HexPattern id="hex-header" />
+  <div class="container bar">
+    <a class="name" href="/">
+      {artistName}
+    </a>
+    <nav class="main-nav" aria-label={text.mainNav}>
+      <ul>
+        {navigation.map((item) => (
+          <li>
+            <a
+              href={item.href}
+              aria-current={currentPath.startsWith(item.href) ? 'page' : undefined}
+            >
+              {text.nav[item.key]}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+    <nav class="lang-switch" aria-label={text.language}>
+      {locales.map((code) => (
+        <a
+          href={switchLinks[code]}
+          hreflang={code}
+          lang={code}
+          aria-current={code === locale ? 'true' : undefined}
+        >
+          {code}
+        </a>
+      ))}
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: relative;
+    overflow: hidden;
+    border-bottom: var(--line-width) solid var(--line);
+    background: var(--surface);
+  }
+  .bar {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-5);
+    padding-block: var(--space-4);
+  }
+  .name {
+    font-family: var(--font-heading);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-heading);
+    letter-spacing: var(--tracking-heading);
+    color: var(--text);
+    text-decoration: none;
+  }
+  .main-nav {
+    order: 3;
+    width: 100%;
+  }
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .main-nav a,
+  .lang-switch a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    font-family: var(--font-label);
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-label);
+    text-transform: uppercase;
+    color: var(--text-muted);
+    text-decoration: none;
+    border-bottom: var(--line-width-strong) solid transparent;
+    transition:
+      color var(--motion-fast) var(--motion-ease),
+      border-color var(--motion-fast) var(--motion-ease);
+  }
+  .main-nav a:hover,
+  .lang-switch a:hover {
+    color: var(--accent);
+  }
+  [aria-current] {
+    color: var(--text) !important;
+    border-bottom-color: var(--accent) !important;
+  }
+  .lang-switch {
+    display: flex;
+    gap: var(--space-4);
+  }
+  @media (min-width: 48em) {
+    .main-nav {
+      order: 0;
+      width: auto;
+      margin-left: auto;
+    }
+  }
+</style>
