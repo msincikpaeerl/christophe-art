@@ -9,7 +9,7 @@ A custom server-rendered website (public pages must be indexable) with an admin 
 
 ## Current state
 
-Foundation only (stack, tooling, tests, CI, Docker). The only page is a placeholder home page, plus `GET /health`.
+Foundation, visual identity and bilingual routing (`/fr/...`, `/en/...`). Public pages are placeholders, plus `GET /health`. Interface texts always go through `src/i18n/` dictionaries.
 
 ## Read before working
 
@@ -45,7 +45,8 @@ Package manager: pnpm (`npm install --global pnpm@12.15.0`), Node 24.21.0 (`.nvm
 ## Repository map
 
 ```
-src/pages/        Astro pages and endpoints (index.astro, health.ts)
+src/pages/        Astro pages and endpoints (index.ts redirect, [lang]/ public pages, health.ts)
+src/i18n/         Languages: route table, dictionaries (fr/en), formatting; see docs/dev/i18n.md
 src/styles/       Design tokens (tokens.css, the only place for raw values) and base styles
 src/components/   Header, footer and other Astro components; src/layouts/ holds the page frame
 public/fonts/     Self-hosted fonts with their licences

@@ -1,43 +1,25 @@
-// Site-wide constants and the few interface labels shared by the header and the footer.
-// The pages behind these links are built by later tickets.
+// Site-wide constants and the links shared by the header and the footer.
+// Interface texts live in the dictionaries (src/i18n/dictionaries); the paths in the route table.
 
-export type Locale = 'fr' | 'en';
+import type { MessageKey, RouteKey } from './i18n/index.ts';
 
 export const artistName = 'Christophe Art';
 
 // Placeholder: replace with the artist's real profile when the owner provides it.
 export const socialUrl = 'https://www.instagram.com/';
 
-export const labels = {
-  en: {
-    skip: 'Skip to content',
-    mainNav: 'Main navigation',
-    language: 'Language',
-    footerNav: 'Legal',
-    social: 'Instagram',
-    rights: 'All rights reserved',
-    nav: { works: 'Works', about: 'About', contact: 'Contact' },
-    legal: { legalNotice: 'Legal notice', privacy: 'Privacy policy' },
-  },
-  fr: {
-    skip: 'Aller au contenu',
-    mainNav: 'Navigation principale',
-    language: 'Langue',
-    footerNav: 'Mentions légales',
-    social: 'Instagram',
-    rights: 'Tous droits réservés',
-    nav: { works: 'Œuvres', about: 'À propos', contact: 'Contact' },
-    legal: { legalNotice: 'Mentions légales', privacy: 'Politique de confidentialité' },
-  },
-} as const satisfies Record<Locale, unknown>;
+interface SiteLink {
+  route: RouteKey;
+  label: MessageKey;
+}
 
-export const navigation = [
-  { key: 'works', href: '/works' },
-  { key: 'about', href: '/about' },
-  { key: 'contact', href: '/contact' },
-] as const;
+export const navigation: readonly SiteLink[] = [
+  { route: 'gallery', label: 'nav.gallery' },
+  { route: 'about', label: 'nav.about' },
+  { route: 'contact', label: 'nav.contact' },
+];
 
-export const legalLinks = [
-  { key: 'legalNotice', href: '/legal' },
-  { key: 'privacy', href: '/privacy' },
-] as const;
+export const legalLinks: readonly SiteLink[] = [
+  { route: 'legalNotice', label: 'legal.legalNotice' },
+  { route: 'privacy', label: 'legal.privacy' },
+];

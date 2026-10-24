@@ -1,42 +1,42 @@
 ---
-import { artistName, labels, navigation, type Locale } from '../site.ts';
+import { locales, pathFor, translator, type Locale, type RouteKey } from '../i18n/index.ts';
+import { artistName, navigation } from '../site.ts';
 import HexPattern from './HexPattern.astro';
 
 interface Props {
   locale: Locale;
-  /** Address of the same page in each language; defaults to the current page. */
+  /** Address of the same page in each language; defaults to the current address. */
   alternates?: Record<Locale, string> | undefined;
-  /** Path of the current section, to mark it in the navigation. */
-  currentPath?: string;
+  /** Page being shown, to mark it in the navigation. */
+  currentRoute?: RouteKey | undefined;
 }
 
-const { locale, alternates, currentPath = Astro.url.pathname } = Astro.props;
-const text = labels[locale];
-const switchLinks = alternates ?? { fr: currentPath, en: currentPath };
-const locales: Locale[] = ['fr', 'en'];
+const { locale, alternates, currentRoute } = Astro.props;
+const t = translator(locale);
+const switchLinks = alternates ?? { fr: Astro.url.pathname, en: Astro.url.pathname };
 ---
 
 <header class="site-header">
   <HexPattern id="hex-header" />
   <div class="container bar">
-    <a class="name" href="/">
+    <a class="name" href={pathFor('home', locale)}>
       {artistName}
     </a>
-    <nav class="main-nav" aria-label={text.mainNav}>
+    <nav class="main-nav" aria-label={t('site.mainNav')}>
       <ul>
         {navigation.map((item) => (
           <li>
             <a
-              href={item.href}
-              aria-current={currentPath.startsWith(item.href) ? 'page' : undefined}
+              href={pathFor(item.route, locale)}
+              aria-current={currentRoute === item.route ? 'page' : undefined}
             >
-              {text.nav[item.key]}
+              {t(item.label)}
             </a>
           </li>
         ))}
       </ul>
     </nav>
-    <nav class="lang-switch" aria-label={text.language}>
+    <nav class="lang-switch" aria-label={t('site.language')}>
       {locales.map((code) => (
         <a
           href={switchLinks[code]}

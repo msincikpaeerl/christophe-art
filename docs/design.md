@@ -80,6 +80,10 @@ Short and discreet: fades and a slight lift on hover (`--motion-fast`, `--motion
 - The layout works from 360 px wide with no horizontal scroll; the navigation wraps on small screens. Breakpoint: 48 em.
 - A "skip to content" link is the first focusable element.
 
+## Language switch
+
+The FR / EN switch in the header uses the same style as the menu links: label font (`--font-label`, `--text-xs`, uppercase), `--text-muted`, current language in `--text` with a `--accent` underline, `--space-4` between the two, at least `--touch-target` tall. It adds no colour, font or spacing of its own. Texts that fall back to French are wrapped in `lang="fr"` without any visual change.
+
 ## Components
 
-`SiteHeader` (artist name, navigation, FR/EN switch), `SiteFooter` (anthracite; legal pages, social link), `HexPattern`, `LoadingState`, `ArtworkCard`, and the layout `src/layouts/BaseLayout.astro`. Add each new component to `/dev/design`.
+`SiteHeader` (artist name, navigation, FR/EN switch), `SiteFooter` (anthracite; legal pages, social link), `HexPattern`, `LoadingState`, `ArtworkCard`, `LocalizedText`, and the layout `src/layouts/BaseLayout.astro`. Add each new component to `/dev/design`.

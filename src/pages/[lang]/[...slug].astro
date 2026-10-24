@@ -1,0 +1,87 @@
+---
+// Every public page, in both languages: /fr/... and /en/.... The route table (src/i18n/routes.ts)
+// turns the address into a page; an unknown prefix or page answers a 404 page with a link home.
+// Pages without their own design yet show a placeholder.
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { artistName } from '../../site.ts';
+import {
+  defaultLocale,
+  isLocale,
+  pathFor,
+  resolveRoute,
+  translator,
+  type MessageKey,
+  type RouteKey,
+} from '../../i18n/index.ts';
+
+const { lang, slug } = Astro.params;
+const locale = isLocale(lang) ? lang : defaultLocale;
+const t = translator(locale);
+const resolved = isLocale(lang) ? resolveRoute(lang, (slug ?? '').split('/')) : undefined;
+const route = resolved?.rest.length === 0 ? resolved : undefined;
+if (!route) Astro.response.status = 404;
+
+const titles: Record<Exclude<RouteKey, 'home'>, MessageKey> = {
+  gallery: 'nav.gallery',
+  about: 'nav.about',
+  contact: 'nav.contact',
+  legalNotice: 'legal.legalNotice',
+  privacy: 'legal.privacy',
+};
+const pageTitle = route && route.key !== 'home' ? t(titles[route.key]) : undefined;
+---
+
+{route?.key === 'home' && (
+  <BaseLayout title={artistName} description={t('meta.description')} locale={locale} route={route}>
+    <section class="hero surface-dark">
+      <div class="container">
+        <p class="plate">{t('home.tagline')}</p>
+        <h1>{artistName}</h1>
+        <p>{t('home.comingSoon')}</p>
+      </div>
+    </section>
+  </BaseLayout>
+)}
+{route && pageTitle !== undefined && (
+  <BaseLayout
+    title={`${pageTitle} · ${artistName}`}
+    description={t('meta.description')}
+    locale={locale}
+    route={route}
+  >
+    <section class="container page">
+      <h1>{pageTitle}</h1>
+      <p>{t('placeholder.comingSoon')}</p>
+    </section>
+  </BaseLayout>
+)}
+{!route && (
+  <BaseLayout
+    title={`${t('notFound.title')} · ${artistName}`}
+    description={t('notFound.text')}
+    locale={locale}
+    alternates={{ fr: pathFor('home', 'fr'), en: pathFor('home', 'en') }}
+  >
+    <section class="container page" data-testid="not-found">
+      <h1>{t('notFound.title')}</h1>
+      <p>{t('notFound.text')}</p>
+      <p>
+        <a class="button" href={pathFor('home', locale)}>
+          {t('notFound.home')}
+        </a>
+      </p>
+    </section>
+  </BaseLayout>
+)}
+
+<style>
+  .hero {
+    padding-block: var(--space-9);
+  }
+  .plate {
+    margin-bottom: var(--space-6);
+  }
+  .page {
+    padding-block: var(--space-8);
+  }
+</style>

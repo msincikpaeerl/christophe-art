@@ -2,6 +2,7 @@
 // Development-only showcase of the palette and every component (served when DEV_PAGES=true).
 import ArtworkCard from '../../components/ArtworkCard.astro';
 import LoadingState from '../../components/LoadingState.astro';
+import LocalizedText from '../../components/LocalizedText.astro';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { loadConfig } from '../../server/config.ts';
 
@@ -107,7 +108,13 @@ const spaces = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
       </div>
 
       <h3>Loading state</h3>
-      <LoadingState />
+      <LoadingState label="Loading" />
+
+      <h3>Translated content</h3>
+      <p>
+        English text with a French fallback:{' '}
+        <LocalizedText value={{ fr: 'Arbre hexagonal', en: '' }} locale="en" />
+      </p>
 
       <h3>Anthracite section</h3>
       <div class="surface-dark dark-sample">

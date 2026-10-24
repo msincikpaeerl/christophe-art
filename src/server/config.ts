@@ -15,6 +15,14 @@ const schema = z
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
       .default('info'),
+    /** Public address of the site (no trailing path), used for canonical and hreflang links. */
+    SITE_URL: z
+      .string()
+      .refine((value) => /^https?:\/\/[^/\s]+\/?$/.test(value), {
+        message: 'must be an http:// or https:// address without a path',
+      })
+      .transform((value) => value.replace(/\/$/, ''))
+      .optional(),
     /** Serves the design showcase page (`/dev/design`). Off by default; never enable in production. */
     DEV_PAGES: z
       .enum(['true', 'false'])

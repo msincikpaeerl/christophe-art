@@ -26,6 +26,7 @@ services:
     environment:
       DATABASE_URL: postgres://christophe:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/christophe
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      SITE_URL: ${SITE_URL:-http://localhost:4321}
     ports:
       - '${PORT:-4321}:4321'
     volumes:

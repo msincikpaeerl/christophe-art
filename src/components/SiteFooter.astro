@@ -1,5 +1,6 @@
 ---
-import { artistName, labels, legalLinks, socialUrl, type Locale } from '../site.ts';
+import { pathFor, translator, type Locale } from '../i18n/index.ts';
+import { artistName, legalLinks, socialUrl } from '../site.ts';
 import HexPattern from './HexPattern.astro';
 
 interface Props {
@@ -7,7 +8,7 @@ interface Props {
 }
 
 const { locale } = Astro.props;
-const text = labels[locale];
+const t = translator(locale);
 const year = new Date().getFullYear();
 ---
 
@@ -15,22 +16,22 @@ const year = new Date().getFullYear();
   <HexPattern id="hex-footer" />
   <div class="container inner">
     <p class="name">{artistName}</p>
-    <nav aria-label={text.footerNav}>
+    <nav aria-label={t('site.footerNav')}>
       <ul>
         {legalLinks.map((item) => (
           <li>
-            <a href={item.href}>{text.legal[item.key]}</a>
+            <a href={pathFor(item.route, locale)}>{t(item.label)}</a>
           </li>
         ))}
         <li>
           <a href={socialUrl} rel="noopener noreferrer me" target="_blank">
-            {text.social}
+            {t('site.social')}
           </a>
         </li>
       </ul>
     </nav>
     <p class="label">
-      © {year} {artistName} · {text.rights}
+      © {year} {artistName} · {t('site.rights')}
     </p>
   </div>
 </footer>
