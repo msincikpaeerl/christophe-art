@@ -2,18 +2,34 @@
 import '../styles/global.css';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
-import { labels, type Locale } from '../site.ts';
+import {
+  alternatesFor,
+  defaultLocale,
+  translator,
+  type Locale,
+  type ResolvedRoute,
+} from '../i18n/index.ts';
+import { loadConfig } from '../server/config.ts';
 
 interface Props {
   title: string;
   description: string;
   locale?: Locale;
+  /** The public page being shown: gives the language switch, the canonical URL and the hreflang links. */
+  route?: ResolvedRoute | undefined;
+  /** Address of the same page in each language, for pages outside the route table. */
   alternates?: Record<Locale, string>;
   /** Keeps the page out of search engines (development pages). */
   noindex?: boolean;
 }
 
-const { title, description, locale = 'en', alternates, noindex = false } = Astro.props;
+const { title, description, locale = 'en', route, alternates, noindex = false } = Astro.props;
+const t = translator(locale);
+const switchLinks = alternates ?? (route ? alternatesFor(route, Astro.url.search) : undefined);
+// Canonical and hreflang addresses never carry the filters of the address.
+const pages = route ? alternatesFor(route) : undefined;
+const siteUrl = loadConfig().SITE_URL ?? Astro.url.origin;
+const absolute = (path: string) => siteUrl + path;
 ---
 
 <!doctype html>
@@ -24,12 +40,16 @@ const { title, description, locale = 'en', alternates, noindex = false } = Astro
     <title>{title}</title>
     <meta name="description" content={description} />
     {noindex && <meta name="robots" content="noindex" />}
+    {pages && <link rel="canonical" href={absolute(pages[locale])} />}
+    {pages && <link rel="alternate" hreflang="fr" href={absolute(pages.fr)} />}
+    {pages && <link rel="alternate" hreflang="en" href={absolute(pages.en)} />}
+    {pages && <link rel="alternate" hreflang="x-default" href={absolute(pages[defaultLocale])} />}
   </head>
   <body>
     <a class="skip-link" href="#content">
-      {labels[locale].skip}
+      {t('site.skip')}
     </a>
-    <SiteHeader locale={locale} alternates={alternates} />
+    <SiteHeader locale={locale} alternates={switchLinks} currentRoute={route?.key} />
     <main id="content">
       <slot />
     </main>

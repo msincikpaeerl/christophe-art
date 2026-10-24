@@ -26,6 +26,17 @@ describe('loadConfig', () => {
     expect(loadConfig({ ...valid, DEV_PAGES: 'true' }).DEV_PAGES).toBe(true);
   });
 
+  it('accepts an optional public address of the site, without trailing slash', () => {
+    expect(loadConfig(valid).SITE_URL).toBeUndefined();
+    expect(loadConfig({ ...valid, SITE_URL: 'https://christophe.art/' }).SITE_URL).toBe(
+      'https://christophe.art',
+    );
+    expect(() => loadConfig({ ...valid, SITE_URL: 'christophe.art' })).toThrow(/SITE_URL/);
+    expect(() => loadConfig({ ...valid, SITE_URL: 'https://christophe.art/fr' })).toThrow(
+      /SITE_URL/,
+    );
+  });
+
   it('names a missing variable', () => {
     expect(() => loadConfig({})).toThrow(ConfigError);
     expect(() => loadConfig({})).toThrow(/DATABASE_URL: is required but missing/);

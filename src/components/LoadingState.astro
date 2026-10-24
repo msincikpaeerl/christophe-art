@@ -2,10 +2,11 @@
 import HexPattern from './HexPattern.astro';
 
 interface Props {
-  label?: string;
+  /** Accessible text of the status, in the page language. */
+  label: string;
 }
 
-const { label = 'Loading' } = Astro.props;
+const { label } = Astro.props;
 ---
 
 <div class="loading" role="status">

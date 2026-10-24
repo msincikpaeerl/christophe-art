@@ -1,0 +1,15 @@
+---
+// A content field in the page language. When the English text is empty, the French text is shown
+// in its place and marked lang="fr" so screen readers pronounce it correctly.
+import { pickLocalized, type Locale, type LocalizedField } from '../i18n/index.ts';
+
+interface Props {
+  value: LocalizedField;
+  locale: Locale;
+}
+
+const { value, locale } = Astro.props;
+const picked = pickLocalized(value, locale);
+---
+
+{picked.fallback ? <span lang={picked.lang}>{picked.text}</span> : picked.text}
