@@ -21,7 +21,32 @@ export const adminAccounts = pgTable('admin_accounts', {
   mustChangePassword: boolean('must_change_password').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+  /** Authenticator app secret, encrypted (AES-256-GCM); null while the app is not set up. */
+  totpSecret: text('totp_secret'),
+  /** Secret shown at setup, encrypted, until the admin confirms it with a valid code. */
+  totpPendingSecret: text('totp_pending_secret'),
+  /** Time step of the last code accepted: a code of this step or an older one is refused. */
+  totpLastStep: integer('totp_last_step'),
+  /** Wrong codes in a row since the last good code or the last lock. */
+  totpFailures: integer('totp_failures').notNull().default(0),
+  /** Codes are refused until this date. */
+  totpLockedUntil: timestamp('totp_locked_until', { withTimezone: true }),
 });
+
+/** Recovery codes: only a keyed hash is stored; a code works once. */
+export const adminRecoveryCodes = pgTable(
+  'admin_recovery_codes',
+  {
+    id: integer('id').primaryKey().generatedAlwaysAsIdentity(),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => adminAccounts.id, { onDelete: 'cascade' }),
+    codeHash: text('code_hash').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+  },
+  (table) => [index('admin_recovery_codes_account_idx').on(table.accountId, table.codeHash)],
+);
 
 /** Login sessions. The cookie holds a random token; only its SHA-256 hash is stored. */
 export const adminSessions = pgTable(

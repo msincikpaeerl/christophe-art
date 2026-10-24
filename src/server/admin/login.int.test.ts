@@ -37,7 +37,8 @@ describe('attemptLogin', () => {
     const second = await login('alice@example.test', password);
     if (!first.ok || !second.ok) throw new Error('login failed');
     expect(first.token).not.toBe(second.token);
-    expect(first.mustChangePassword).toBe(true);
+    // Without a second factor the only way on is its setup.
+    expect(first.next).toBe('/admin/double-authentification');
 
     const active = await resolveSession(testDb.db, first.token, testSettings);
     expect(active?.session.factors).toEqual(['password']);

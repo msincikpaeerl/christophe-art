@@ -5,7 +5,7 @@ import { createTestDatabase } from '../../test-support/database.ts';
 import type { TestDatabase } from '../../test-support/database.ts';
 import { adminAccounts } from '../schema.ts';
 import { createAccount } from './accounts.ts';
-import { clientIp, guardAdminRequest, isAdminPath } from './guard.ts';
+import { clientIp, guardAdminRequest, isAdminPath, landingPath } from './guard.ts';
 import { createSession } from './sessions.ts';
 import { testSettings } from './test-settings.ts';
 
@@ -15,6 +15,10 @@ const publicRoutes = publicAdminRoutes;
 let testDb: TestDatabase;
 let token = '';
 let mustChangeToken = '';
+/** An account with a second factor whose session has only typed the password. */
+let passwordOnlyToken = '';
+/** An account without any second factor. */
+let noFactorToken = '';
 
 beforeAll(async () => {
   testDb = await createTestDatabase();
@@ -32,15 +36,44 @@ beforeAll(async () => {
     actor,
     temporaryPassword: 'a-very-unusual-passphrase',
   });
-  if (!ready.ok || !fresh.ok) throw new Error('setup failed');
+  const plain = await createAccount(testDb.db, {
+    displayName: 'Plain',
+    email: 'plain@example.test',
+    actor,
+    temporaryPassword: 'a-very-unusual-passphrase',
+  });
+  if (!ready.ok || !fresh.ok || !plain.ok) throw new Error('setup failed');
+  // "Ready" and "Fresh" have a second factor (any stored secret: the guard only checks it exists).
   await testDb.db
     .update(adminAccounts)
-    .set({ mustChangePassword: false })
+    .set({ mustChangePassword: false, totpSecret: 'stored' })
     .where(eq(adminAccounts.id, ready.account.id));
-  const options = { factors: ['password'], userAgent: 'test', ip: '::1' };
-  token = (await createSession(testDb.db, { accountId: ready.account.id, ...options })).token;
-  mustChangeToken = (await createSession(testDb.db, { accountId: fresh.account.id, ...options }))
-    .token;
+  await testDb.db
+    .update(adminAccounts)
+    .set({ totpSecret: 'stored' })
+    .where(eq(adminAccounts.id, fresh.account.id));
+  const options = { userAgent: 'test', ip: '::1' };
+  const verified = ['password', 'totp'];
+  token = (
+    await createSession(testDb.db, { accountId: ready.account.id, factors: verified, ...options })
+  ).token;
+  mustChangeToken = (
+    await createSession(testDb.db, { accountId: fresh.account.id, factors: verified, ...options })
+  ).token;
+  passwordOnlyToken = (
+    await createSession(testDb.db, {
+      accountId: ready.account.id,
+      factors: ['password'],
+      ...options,
+    })
+  ).token;
+  noFactorToken = (
+    await createSession(testDb.db, {
+      accountId: plain.account.id,
+      factors: ['password'],
+      ...options,
+    })
+  ).token;
 });
 
 afterAll(async () => {
@@ -187,6 +220,72 @@ describe('temporary password', () => {
       }
       expect((await guard('POST', path, options)).allowed).toBe(false);
     }
+  });
+});
+
+describe('second factor', () => {
+  const routes = adminRoutes().filter((route) => !publicRoutes.includes(route));
+  const setup = '/admin/double-authentification';
+  const code = '/admin/verification';
+  const logout = '/admin/deconnexion';
+
+  it('has the setup and code step pages among the routes', () => {
+    expect(routes).toContain(setup);
+    expect(routes).toContain(code);
+    expect(routes).toContain('/admin/codes-de-secours');
+  });
+
+  const withoutFactor = routes.filter((route) => route !== setup && route !== logout);
+  it.each(withoutFactor)('%s is refused to an account without a second factor', async (route) => {
+    for (const method of ['GET', 'POST']) {
+      const result = await guard(method, route, { cookieToken: noFactorToken });
+      expect(result.allowed, `${method} ${route}`).toBe(false);
+      if (!result.allowed && method === 'GET') {
+        expect(result.response.status).toBe(303);
+        expect(result.response.headers.get('location')).toBe(setup);
+      }
+      if (!result.allowed && method === 'POST') expect(result.response.status).toBe(403);
+    }
+  });
+
+  it('leaves an account without a second factor the setup and the logout only', async () => {
+    for (const route of [setup, logout]) {
+      expect((await guard('GET', route, { cookieToken: noFactorToken })).allowed).toBe(true);
+      expect((await guard('POST', route, { cookieToken: noFactorToken })).allowed).toBe(true);
+    }
+  });
+
+  const beforeCode = routes.filter((route) => route !== code && route !== logout);
+  it.each(beforeCode)('%s is refused before the code is typed', async (route) => {
+    for (const method of ['GET', 'POST']) {
+      const result = await guard(method, route, { cookieToken: passwordOnlyToken });
+      expect(result.allowed, `${method} ${route}`).toBe(false);
+      if (!result.allowed && method === 'GET') {
+        expect(result.response.headers.get('location')).toBe(code);
+      }
+    }
+  });
+
+  it('leaves the code step and the logout open after the password', async () => {
+    for (const route of [code, logout]) {
+      expect((await guard('GET', route, { cookieToken: passwordOnlyToken })).allowed).toBe(true);
+      expect((await guard('POST', route, { cookieToken: passwordOnlyToken })).allowed).toBe(true);
+    }
+  });
+
+  it('sends each state to its next page', () => {
+    const base = { mustChangePassword: false };
+    expect(landingPath({ ...base, totpSecret: null }, { factors: ['password'] })).toBe(setup);
+    expect(landingPath({ ...base, totpSecret: 'x' }, { factors: ['password'] })).toBe(code);
+    expect(landingPath({ ...base, totpSecret: 'x' }, { factors: ['password', 'totp'] })).toBe(
+      '/admin/comptes',
+    );
+    expect(
+      landingPath(
+        { mustChangePassword: true, totpSecret: 'x' },
+        { factors: ['password', 'recovery'] },
+      ),
+    ).toBe('/admin/mot-de-passe');
   });
 });
 

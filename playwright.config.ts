@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
-import { adminAccounts, seedPassword } from './e2e/admin-accounts.ts';
+import {
+  adminAccounts,
+  e2eEncryptionKey,
+  seedPassword,
+  seedTotpSecret,
+} from './e2e/admin-accounts.ts';
 
 const port = '4322';
 
@@ -22,7 +27,7 @@ export default defineConfig({
       'pnpm build',
       ...adminAccounts.map(
         (email) =>
-          `pnpm admin:create --email ${email} --name "Admin ${email.split('@')[0] ?? ''}" --temporary-password ${seedPassword}`,
+          `pnpm admin:create --email ${email} --name "Admin ${email.split('@')[0] ?? ''}" --temporary-password ${seedPassword} --totp-secret ${seedTotpSecret}`,
       ),
       'pnpm start',
     ].join(' && '),
@@ -36,6 +41,9 @@ export default defineConfig({
       DATABASE_URL: 'pglite://.e2e-db',
       // Many tests log in from the same address: only the per-account limit is exercised.
       ADMIN_LOGIN_MAX_FAILURES_PER_IP: '1000',
+      ADMIN_ENCRYPTION_KEY: e2eEncryptionKey,
+      // Three wrong codes lock an account, which keeps the lock test short.
+      ADMIN_CODE_MAX_FAILURES: '3',
       LOG_LEVEL: 'warn',
       DEV_PAGES: 'true',
       SITE_URL: `http://127.0.0.1:${port}`,

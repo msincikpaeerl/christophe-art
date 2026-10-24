@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { and, desc, eq, ne } from 'drizzle-orm';
+import { and, desc, eq, ne, sql } from 'drizzle-orm';
 import type { Database } from '../database.ts';
 import { adminAccounts, adminSessions } from '../schema.ts';
 import type { AdminSettings } from './settings.ts';
@@ -14,6 +14,31 @@ export type Session = typeof adminSessions.$inferSelect;
 
 export function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
+}
+
+/** Session factors that count as a second factor (a later ticket adds passkeys). */
+export const secondFactorKinds: readonly string[] = ['totp', 'recovery'];
+
+/** True when the account has a second factor, so its sessions need a code after the password. */
+export function accountHasSecondFactor(account: Pick<Account, 'totpSecret'>): boolean {
+  return account.totpSecret !== null;
+}
+
+/** True when a second factor was verified in this session. */
+export function sessionHasSecondFactor(session: Pick<Session, 'factors'>): boolean {
+  return session.factors.some((factor) => secondFactorKinds.includes(factor));
+}
+
+/** Records that a factor was verified in the session (`totp`, `recovery`). */
+export async function addSessionFactor(
+  db: Database,
+  sessionId: string,
+  factor: string,
+): Promise<void> {
+  await db
+    .update(adminSessions)
+    .set({ factors: sql`array_append(${adminSessions.factors}, ${factor})` })
+    .where(eq(adminSessions.id, sessionId));
 }
 
 export interface NewSession {
@@ -70,7 +95,12 @@ export async function resolveSession(
   const expired =
     now.getTime() - row.session.lastActivityAt.getTime() > idleMs ||
     now.getTime() - row.session.createdAt.getTime() > maxMs;
-  if (expired || row.account.status !== 'active') {
+  // The code step is open for a short time only: after it the login must start again.
+  const codeStepExpired =
+    accountHasSecondFactor(row.account) &&
+    !sessionHasSecondFactor(row.session) &&
+    now.getTime() - row.session.createdAt.getTime() > settings.codeStepMinutes * 60_000;
+  if (expired || codeStepExpired || row.account.status !== 'active') {
     await db.delete(adminSessions).where(eq(adminSessions.id, row.session.id));
     return undefined;
   }

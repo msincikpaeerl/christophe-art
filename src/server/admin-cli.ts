@@ -3,12 +3,15 @@
 import { parseArgs } from 'node:util';
 import { createAccount, findAccountByEmail, resetPassword } from './admin/accounts.ts';
 import { serverActor } from './admin/activity.ts';
+import { installTotpSecret } from './admin/second-factor.ts';
+import { adminSettings } from './admin/settings.ts';
+import { base32Decode } from './admin/totp.ts';
 import { ConfigError, loadConfig } from './config.ts';
 import { openDatabase } from './database.ts';
 
 const usage = {
   create:
-    'Usage: pnpm admin:create --email <login email> --name "<display name>" [--temporary-password <password>]',
+    'Usage: pnpm admin:create --email <login email> --name "<display name>" [--temporary-password <password>] [--totp-secret <base32 key>]',
   'reset-password': 'Usage: pnpm admin:reset-password --email <login email>',
 };
 
@@ -33,12 +36,18 @@ async function main(): Promise<void> {
       email: { type: 'string' },
       name: { type: 'string' },
       'temporary-password': { type: 'string' },
+      'totp-secret': { type: 'string' },
     },
   });
   const email = values.email;
   if (!email || (command === 'create' && !values.name)) throw new Error(usage[command]);
 
-  const database = await openDatabase(loadConfig().DATABASE_URL);
+  const config = loadConfig();
+  const totpSecret = values['totp-secret'];
+  if (totpSecret !== undefined && (command !== 'create' || !base32Decode(totpSecret))) {
+    throw new Error(usage[command]);
+  }
+  const database = await openDatabase(config.DATABASE_URL);
   try {
     await database.migrate();
     const actor = { name: serverActor, ip: 'server' };
@@ -52,6 +61,10 @@ async function main(): Promise<void> {
           : { temporaryPassword: values['temporary-password'] }),
       });
       if (!result.ok) throw new Error(errorTexts[result.error] ?? result.error);
+      if (totpSecret !== undefined) {
+        await installTotpSecret(database.db, adminSettings(config), result.account.id, totpSecret);
+        console.log('The authenticator secret was installed (second factor already set up).');
+      }
       console.log(`Account created for ${result.account.email}.`);
       console.log(`Temporary password (shown once): ${result.temporaryPassword}`);
       console.log('It must be changed at the first login.');

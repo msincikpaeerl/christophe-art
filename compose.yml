@@ -1,5 +1,5 @@
 # The production stack: the website and its PostgreSQL database.
-# Set POSTGRES_PASSWORD in a .env file next to this file (see .env.example).
+# Set POSTGRES_PASSWORD and ADMIN_ENCRYPTION_KEY in a .env file next to this file (see .env.example).
 services:
   db:
     image: postgres:18.6-alpine3.24
@@ -25,6 +25,10 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgres://christophe:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/christophe
+      ADMIN_ENCRYPTION_KEY: ${ADMIN_ENCRYPTION_KEY:?Set ADMIN_ENCRYPTION_KEY in .env}
+      ADMIN_CODE_MAX_FAILURES: ${ADMIN_CODE_MAX_FAILURES:-5}
+      ADMIN_CODE_LOCK_MINUTES: ${ADMIN_CODE_LOCK_MINUTES:-15}
+      ADMIN_CODE_STEP_MINUTES: ${ADMIN_CODE_STEP_MINUTES:-5}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       SITE_URL: ${SITE_URL:-http://localhost:4321}
     ports:

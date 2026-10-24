@@ -1,0 +1,206 @@
+---
+// The second factor of the signed-in admin. Without one, this is the setup screen (the only page
+// open); with one, it shows its state and replaces the authenticator app.
+import { a, codeLimitedText } from '../../admin/messages.ts';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { findAccountById } from '../../server/admin/accounts.ts';
+import { formText, readForm } from '../../server/admin/form.ts';
+import {
+  beginReplacement,
+  cancelSetup,
+  confirmSetup,
+  readPendingSetup,
+  startSetup,
+} from '../../server/admin/second-factor.ts';
+import { accountHasSecondFactor, addSessionFactor } from '../../server/admin/sessions.ts';
+import { getDatabase } from '../../server/database.ts';
+
+export const prerender = false;
+
+const admin = Astro.locals.admin;
+const active = admin.active;
+if (!active) return Astro.redirect('/admin/connexion', 303);
+
+const { db } = await getDatabase();
+let account = active.account;
+let error: string | undefined;
+let notice: string | undefined;
+let recoveryCodes: string[] | undefined;
+
+if (Astro.request.method === 'POST') {
+  const form = await readForm(Astro.request);
+  const intent = formText(form, 'intent');
+  const code = formText(form, 'code');
+  if (intent === 'confirm') {
+    const result = await confirmSetup(db, admin.settings, account, code, admin.ip);
+    if (result.ok) {
+      // The first setup also proves the second factor for this session.
+      if (!result.replaced) await addSessionFactor(db, active.session.id, 'totp');
+      recoveryCodes = result.recoveryCodes;
+      if (result.replaced) notice = a('factor.replacedDone');
+    } else if (result.reason === 'locked') {
+      error = codeLimitedText(result.retryAfterSeconds);
+      Astro.response.status = 429;
+    } else {
+      error = result.reason === 'no_setup' ? a('factor.noSetup') : a('factor.invalid');
+      Astro.response.status = 422;
+    }
+  } else if (intent === 'replace' && accountHasSecondFactor(account)) {
+    if (code.trim() === '') {
+      error = a('factor.needCurrent');
+      Astro.response.status = 422;
+    } else {
+      const result = await beginReplacement(db, admin.settings, account, code, admin.ip);
+      if (!result.ok) {
+        error =
+          result.reason === 'locked'
+            ? codeLimitedText(result.retryAfterSeconds)
+            : a('code.invalid');
+        Astro.response.status = result.reason === 'locked' ? 429 : 422;
+      }
+    }
+  } else if (intent === 'cancel' && accountHasSecondFactor(account)) {
+    await cancelSetup(db, account.id);
+  }
+  account = (await findAccountById(db, account.id)) ?? account;
+}
+
+// An account without a second factor always has a setup to show.
+if (!accountHasSecondFactor(account) && account.totpPendingSecret === null) {
+  account = await startSetup(db, admin.settings, account);
+}
+
+const pending = recoveryCodes ? undefined : readPendingSetup(account, admin.settings);
+const hasFactor = accountHasSecondFactor(account);
+const downloadText = recoveryCodes
+  ? `${a('factor.downloadHeader')}\n\n${recoveryCodes.join('\n')}\n`
+  : '';
+---
+
+<AdminLayout title={a('factor.title')} bare={!hasFactor}>
+  <div class="admin-narrow stack">
+    <h1>{a('factor.title')}</h1>
+    {notice && (
+      <div class="alert" role="status" data-testid="factor-notice">
+        <span class="label">{a('common.notice')}</span>
+        <p>{notice}</p>
+      </div>
+    )}
+    {error && (
+      <div class="alert" role="alert" data-testid="factor-error">
+        <span class="label">{a('common.error')}</span>
+        <p>{error}</p>
+      </div>
+    )}
+
+    {recoveryCodes && (
+      <section class="stack" data-testid="recovery-codes" aria-labelledby="recovery-title">
+        <h2 id="recovery-title">{a('factor.recoveryTitle')}</h2>
+        <p>{a('factor.recoveryWarning')}</p>
+        <ul class="code-list" data-testid="recovery-code-list">
+          {recoveryCodes.map((recovery) => (
+            <li>
+              <span class="secret">{recovery}</span>
+            </li>
+          ))}
+        </ul>
+        <p>
+          <a
+            class="button"
+            data-testid="recovery-download"
+            href={`data:text/plain;charset=utf-8,${encodeURIComponent(downloadText)}`}
+            download={a('factor.downloadName')}
+          >
+            {a('factor.download')}
+          </a>
+        </p>
+        <p>
+          <a class="button" href="/admin/comptes">
+            {a('factor.continue')}
+          </a>
+        </p>
+      </section>
+    )}
+
+    {pending && (
+      <section class="stack" data-testid="setup" aria-labelledby="setup-title">
+        {!hasFactor && (
+          <div class="alert" data-testid="must-setup">
+            <span class="label">{a('common.notice')}</span>
+            <p>{a('factor.mustSetup')}</p>
+          </div>
+        )}
+        <p>{a('factor.setupIntro')}</p>
+        <h2 id="setup-title">{a('factor.step1')}</h2>
+        <div class="qr-frame" data-testid="qr" set:html={pending.svg} />
+        <p>{a('factor.step1Text')}</p>
+        <p>
+          <span class="label-inline">{a('factor.key')}</span>
+          <span class="secret" data-testid="totp-secret">
+            {pending.secretText}
+          </span>
+        </p>
+        <h2>{a('factor.step2')}</h2>
+        <p>{a('factor.step2Text')}</p>
+        <form method="post" action="/admin/double-authentification" class="stack">
+          <input type="hidden" name="intent" value="confirm" />
+          <div class="field">
+            <label for="code">{a('factor.code')}</label>
+            <input
+              id="code"
+              name="code"
+              type="text"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              pattern="[0-9 ]*"
+              maxlength="12"
+              required
+            />
+          </div>
+          <button class="button" type="submit">
+            {a('factor.confirm')}
+          </button>
+        </form>
+        {hasFactor && (
+          <form method="post" action="/admin/double-authentification">
+            <input type="hidden" name="intent" value="cancel" />
+            <button class="button" type="submit">
+              {a('factor.cancel')}
+            </button>
+          </form>
+        )}
+      </section>
+    )}
+
+    {hasFactor && !pending && !recoveryCodes && (
+      <section class="stack" data-testid="factor-status" aria-labelledby="status-title">
+        <h2 id="status-title">{a('factor.enabledTitle')}</h2>
+        <p>{a('factor.enabledText')}</p>
+        <p>
+          <a class="button" href="/admin/codes-de-secours">
+            {a('factor.recoveryLink')}
+          </a>
+        </p>
+        <h2>{a('factor.replaceTitle')}</h2>
+        <p>{a('factor.replaceText')}</p>
+        <form method="post" action="/admin/double-authentification" class="stack">
+          <input type="hidden" name="intent" value="replace" />
+          <div class="field">
+            <label for="current">{a('factor.replaceCode')}</label>
+            <input
+              id="current"
+              name="code"
+              type="text"
+              autocomplete="off"
+              maxlength="20"
+              required
+            />
+          </div>
+          <button class="button" type="submit">
+            {a('factor.replace')}
+          </button>
+        </form>
+      </section>
+    )}
+  </div>
+</AdminLayout>

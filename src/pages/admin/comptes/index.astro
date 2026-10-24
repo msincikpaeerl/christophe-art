@@ -9,6 +9,8 @@ import {
   resetPassword,
 } from '../../../server/admin/accounts.ts';
 import { formText, readForm } from '../../../server/admin/form.ts';
+import { resetSecondFactor } from '../../../server/admin/second-factor.ts';
+import { accountHasSecondFactor } from '../../../server/admin/sessions.ts';
 import { sessionCookieName } from '../../../server/admin/settings.ts';
 import { getDatabase } from '../../../server/database.ts';
 
@@ -55,6 +57,10 @@ if (Astro.request.method === 'POST') {
     } else {
       error = errorText(result.error);
     }
+  } else if (intent === 'reset-second-factor') {
+    const result = await resetSecondFactor(db, id, actor, active.account.id);
+    if (result.ok) notice = a('accounts.secondFactorResetDone');
+    else error = errorText(result.error);
   } else {
     error = errorText('not_found');
   }
@@ -108,6 +114,7 @@ const accounts = await listAccounts(db);
             <th scope="col">{a('accounts.name')}</th>
             <th scope="col">{a('accounts.email')}</th>
             <th scope="col">{a('accounts.status')}</th>
+            <th scope="col">{a('accounts.secondFactor')}</th>
             <th scope="col">{a('accounts.created')}</th>
             <th scope="col">{a('accounts.lastLogin')}</th>
             <th scope="col">{a('accounts.actions')}</th>
@@ -123,6 +130,11 @@ const accounts = await listAccounts(db);
               <td>{account.email}</td>
               <td data-testid="status">
                 {account.status === 'active' ? a('accounts.active') : a('accounts.disabled')}
+              </td>
+              <td data-testid="second-factor">
+                {accountHasSecondFactor(account)
+                  ? a('accounts.secondFactorOn')
+                  : a('accounts.secondFactorOff')}
               </td>
               <td>{dateTimeText(account.createdAt)}</td>
               <td>{account.lastLoginAt ? dateTimeText(account.lastLoginAt) : a('common.never')}</td>
@@ -145,6 +157,15 @@ const accounts = await listAccounts(db);
                       <input type="hidden" name="intent" value="reset" />
                       <button class="button" type="submit">
                         {a('accounts.reset')}
+                      </button>
+                    </form>
+                  )}
+                  {account.id !== active.account.id && accountHasSecondFactor(account) && (
+                    <form method="post" action="/admin/comptes">
+                      <input type="hidden" name="id" value={account.id} />
+                      <input type="hidden" name="intent" value="reset-second-factor" />
+                      <button class="button" type="submit">
+                        {a('accounts.resetSecondFactor')}
                       </button>
                     </form>
                   )}

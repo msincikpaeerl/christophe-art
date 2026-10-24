@@ -41,6 +41,8 @@ export type AccountError =
   | 'own_account'
   | 'wrong_current_password'
   | 'same_password'
+  | 'own_second_factor'
+  | 'no_second_factor'
   | PasswordProblem;
 
 export type Result<T> = ({ ok: true } & T) | { ok: false; error: AccountError };

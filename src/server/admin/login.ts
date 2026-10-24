@@ -3,12 +3,13 @@ import type { Database } from '../database.ts';
 import { adminAccounts, adminLoginFailures } from '../schema.ts';
 import { normalizeEmail } from './accounts.ts';
 import { recordActivity } from './activity.ts';
+import { landingPath } from './guard.ts';
 import { verifyAgainstDummy, verifyPassword } from './password.ts';
 import { createSession } from './sessions.ts';
 import type { AdminSettings } from './settings.ts';
 
 export type LoginResult =
-  | { ok: true; token: string; mustChangePassword: boolean }
+  | { ok: true; token: string; next: string }
   | { ok: false; reason: 'invalid' }
   | { ok: false; reason: 'limited'; retryAfterSeconds: number };
 
@@ -65,7 +66,8 @@ async function recordFailure(
 /**
  * Checks a login. A wrong password, an unknown email and a disabled account give the same answer
  * and take the same time (a password check is always done). Failures are limited per account
- * (the email typed, even when unknown) and per IP address.
+ * (the email typed, even when unknown) and per IP address. A correct password opens a session
+ * that only counts as logged in after the second factor; `next` is the page to go to.
  */
 export async function attemptLogin(
   db: Database,
@@ -106,5 +108,5 @@ export async function attemptLogin(
     actor: account.displayName,
     ip: input.ip,
   });
-  return { ok: true, token: session.token, mustChangePassword: account.mustChangePassword };
+  return { ok: true, token: session.token, next: landingPath(account, { factors: ['password'] }) };
 }

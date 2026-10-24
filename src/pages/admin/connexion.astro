@@ -3,6 +3,7 @@
 import { a, limitedText } from '../../admin/messages.ts';
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { formText, readForm } from '../../server/admin/form.ts';
+import { landingPath } from '../../server/admin/guard.ts';
 import { attemptLogin } from '../../server/admin/login.ts';
 import { sessionCookieName, sessionCookieOptions } from '../../server/admin/settings.ts';
 import { getDatabase } from '../../server/database.ts';
@@ -11,10 +12,7 @@ export const prerender = false;
 
 const admin = Astro.locals.admin;
 if (admin.active) {
-  return Astro.redirect(
-    admin.active.account.mustChangePassword ? '/admin/mot-de-passe' : '/admin/comptes',
-    303,
-  );
+  return Astro.redirect(landingPath(admin.active.account, admin.active.session), 303);
 }
 
 let error: string | undefined;
@@ -31,10 +29,7 @@ if (Astro.request.method === 'POST') {
   });
   if (result.ok) {
     Astro.cookies.set(sessionCookieName, result.token, sessionCookieOptions(admin.settings));
-    return Astro.redirect(
-      result.mustChangePassword ? '/admin/mot-de-passe' : '/admin/comptes',
-      303,
-    );
+    return Astro.redirect(result.next, 303);
   }
   if (result.reason === 'limited') {
     error = limitedText(result.retryAfterSeconds);

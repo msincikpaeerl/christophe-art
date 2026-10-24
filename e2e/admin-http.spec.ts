@@ -1,7 +1,7 @@
 // The admin flows seen from the server only (no browser page): forms are posted as a browser does.
 import { expect, test } from '@playwright/test';
 import type { APIRequestContext } from '@playwright/test';
-import { seedPassword } from './admin-accounts.ts';
+import { nextCode, seedPassword, seedTotpSecret } from './admin-accounts.ts';
 
 const origin = 'http://127.0.0.1:4322';
 const headers = { origin, 'sec-fetch-site': 'same-origin' };
@@ -24,7 +24,21 @@ test('login, forced password change, account creation, disable, reset and log', 
     password: seedPassword,
   });
   expect(seed.status()).toBe(303);
-  expect(seed.headers()['location']).toBe('/admin/mot-de-passe');
+  expect(seed.headers()['location']).toBe('/admin/verification');
+
+  // The password alone opens nothing: only the code step is reachable.
+  const beforeCode = await admin.get('/admin/mot-de-passe', { maxRedirects: 0 });
+  expect(beforeCode.status()).toBe(303);
+  expect(beforeCode.headers()['location']).toBe('/admin/verification');
+  const wrongCode = await post(admin, '/admin/verification', { code: '000000' });
+  expect(wrongCode.status()).toBe(401);
+  expect(await wrongCode.text()).toContain('Code incorrect');
+  const rootEmail = `root-http-${testInfo.project.name}@example.test`;
+  const coded = await post(admin, '/admin/verification', {
+    code: await nextCode(seedTotpSecret, rootEmail),
+  });
+  expect(coded.status()).toBe(303);
+  expect(coded.headers()['location']).toBe('/admin/mot-de-passe');
 
   // Temporary password: nothing but the password change is reachable.
   const blocked = await admin.get('/admin/comptes', { maxRedirects: 0 });
@@ -74,7 +88,34 @@ test('login, forced password change, account creation, disable, reset and log', 
     password: temporary ?? '',
   });
   expect(first.status()).toBe(303);
-  expect(first.headers()['location']).toBe('/admin/mot-de-passe');
+  // No second factor yet: the setup is the only way on.
+  expect(first.headers()['location']).toBe('/admin/double-authentification');
+  const stuck = await colleague.get('/admin/comptes', { maxRedirects: 0 });
+  expect(stuck.headers()['location']).toBe('/admin/double-authentification');
+  const setupHtml = await (await colleague.get('/admin/double-authentification')).text();
+  expect(setupHtml).toContain('<svg class="qr"');
+  const secret = /data-testid="totp-secret"[^>]*>\s*([A-Z2-7 ]+?)\s*</.exec(setupHtml)?.[1] ?? '';
+  expect(secret.replaceAll(' ', '')).toHaveLength(32);
+  const unconfirmed = await post(colleague, '/admin/double-authentification', {
+    intent: 'confirm',
+    code: '000000',
+  });
+  expect(unconfirmed.status()).toBe(422);
+  const confirmed = await post(colleague, '/admin/double-authentification', {
+    intent: 'confirm',
+    code: await nextCode(secret.replaceAll(' ', ''), mate),
+  });
+  expect(confirmed.status()).toBe(200);
+  const recovery = [
+    ...(await confirmed.text()).matchAll(
+      /<span class="secret[^"]*"[^>]*>\s*([A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4})\s*</g,
+    ),
+  ].map((match) => match[1] ?? '');
+  expect(recovery).toHaveLength(10);
+  const useRecovery = async () => {
+    const code = recovery.shift() ?? '';
+    return post(colleague, '/admin/verification', { code });
+  };
   await post(colleague, '/admin/mot-de-passe', {
     current: temporary ?? '',
     new: strongPassword,
@@ -103,7 +144,8 @@ test('login, forced password change, account creation, disable, reset and log', 
     password: strongPassword,
   });
   expect(again.status()).toBe(303);
-  expect(again.headers()['location']).toBe('/admin/comptes');
+  expect(again.headers()['location']).toBe('/admin/verification');
+  expect((await useRecovery()).headers()['location']).toBe('/admin/comptes');
 
   // Reset: a temporary password again, and the open session ends.
   const reset = await post(admin, '/admin/comptes', { intent: 'reset', id: mateId ?? '' });
@@ -117,7 +159,8 @@ test('login, forced password change, account creation, disable, reset and log', 
     email: mate,
     password: resetPassword ?? '',
   });
-  expect(afterReset.headers()['location']).toBe('/admin/mot-de-passe');
+  expect(afterReset.headers()['location']).toBe('/admin/verification');
+  expect((await useRecovery()).headers()['location']).toBe('/admin/mot-de-passe');
 
   // The log shows it all.
   const log = await (await admin.get('/admin/journal')).text();

@@ -1,7 +1,12 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ConfigError, loadConfig } from './config.ts';
 
-const valid = { DATABASE_URL: 'postgres://user:pw@localhost:5432/db' };
+const valid = {
+  DATABASE_URL: 'postgres://user:pw@localhost:5432/db',
+  ADMIN_ENCRYPTION_KEY: Buffer.alloc(32, 9).toString('base64'),
+};
 
 describe('loadConfig', () => {
   it('applies the defaults', () => {
@@ -53,9 +58,9 @@ describe('loadConfig', () => {
   });
 
   it('refuses the in-memory database in production', () => {
-    expect(() => loadConfig({ DATABASE_URL: 'pglite://memory', NODE_ENV: 'production' })).toThrow(
-      /DATABASE_URL.*production/,
-    );
+    expect(() =>
+      loadConfig({ ...valid, DATABASE_URL: 'pglite://memory', NODE_ENV: 'production' }),
+    ).toThrow(/DATABASE_URL.*production/);
   });
 
   it('lists every faulty variable at once', () => {
@@ -67,7 +72,37 @@ describe('loadConfig', () => {
         'PORT',
         'DATABASE_URL',
         'LOG_LEVEL',
+        'ADMIN_ENCRYPTION_KEY',
       ]);
     }
+  });
+
+  describe('second-factor settings', () => {
+    it('refuses to start without the encryption key', () => {
+      const attempt = () => loadConfig({ DATABASE_URL: valid.DATABASE_URL });
+      expect(attempt).toThrow(ConfigError);
+      expect(attempt).toThrow(/ADMIN_ENCRYPTION_KEY: is required but missing/);
+    });
+
+    it('refuses a key that is not 32 bytes of base64, without echoing it', () => {
+      for (const bad of ['short', Buffer.alloc(16).toString('base64'), 'x'.repeat(44)]) {
+        const attempt = () => loadConfig({ ...valid, ADMIN_ENCRYPTION_KEY: bad });
+        expect(attempt).toThrow(/ADMIN_ENCRYPTION_KEY/);
+        expect(attempt).not.toThrow(new RegExp(bad));
+      }
+    });
+
+    it('has defaults for the lock settings', () => {
+      expect(loadConfig(valid)).toMatchObject({
+        ADMIN_CODE_MAX_FAILURES: 5,
+        ADMIN_CODE_LOCK_MINUTES: 15,
+        ADMIN_CODE_STEP_MINUTES: 5,
+      });
+    });
+
+    it('lists the key in .env.example', () => {
+      const example = readFileSync(join(import.meta.dirname, '..', '..', '.env.example'), 'utf8');
+      expect(example).toMatch(/^ADMIN_ENCRYPTION_KEY=/m);
+    });
   });
 });

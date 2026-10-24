@@ -171,6 +171,49 @@
   overflow-wrap: anywhere;
 }
 
+.label-inline {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* The QR code: dark squares on a light plate with its quiet zone, as scanners need. */
+.qr-frame {
+  display: inline-block;
+  max-width: 100%;
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--radius-plate);
+  background: var(--surface-light-raised);
+}
+.qr {
+  display: block;
+  width: 14rem;
+  max-width: 100%;
+  height: auto;
+}
+.qr path {
+  fill: var(--text-on-light);
+}
+
+/* Recovery codes: two columns on a wide screen, one on a phone. */
+.code-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.code-list .secret {
+  display: block;
+  font-size: var(--text-base);
+  text-align: center;
+}
+
 /* Tables scroll inside their frame, never the page. */
 .table-wrap {
   overflow-x: auto;

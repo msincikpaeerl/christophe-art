@@ -15,6 +15,13 @@
       "when": 1792834458199,
       "tag": "0001_last_black_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792873569846,
+      "tag": "0002_heavy_lizard",
+      "breakpoints": true
     }
   ]
 }

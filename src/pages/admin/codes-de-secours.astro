@@ -1,0 +1,86 @@
+---
+// The recovery codes of the signed-in admin: how many remain, a warning when few do, and a new set.
+import { a } from '../../admin/messages.ts';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { formText, readForm } from '../../server/admin/form.ts';
+import {
+  recoveryWarningThreshold,
+  regenerateRecoveryCodes,
+  remainingRecoveryCodes,
+} from '../../server/admin/second-factor.ts';
+import { getDatabase } from '../../server/database.ts';
+
+export const prerender = false;
+
+const admin = Astro.locals.admin;
+const active = admin.active;
+if (!active) return Astro.redirect('/admin/connexion', 303);
+
+const { db } = await getDatabase();
+let newCodes: string[] | undefined;
+if (Astro.request.method === 'POST') {
+  const form = await readForm(Astro.request);
+  if (formText(form, 'intent') === 'regenerate') {
+    newCodes = await regenerateRecoveryCodes(db, admin.settings, active.account, admin.ip);
+  }
+}
+
+const remaining = await remainingRecoveryCodes(db, active.account.id);
+const few = remaining <= recoveryWarningThreshold;
+const downloadText = newCodes ? `${a('factor.downloadHeader')}\n\n${newCodes.join('\n')}\n` : '';
+---
+
+<AdminLayout title={a('recovery.title')}>
+  <div class="admin-narrow stack">
+    <h1>{a('recovery.title')}</h1>
+    <p>{a('recovery.intro')}</p>
+
+    {newCodes && (
+      <section class="stack" data-testid="recovery-codes" aria-labelledby="new-title">
+        <h2 id="new-title">{a('recovery.newTitle')}</h2>
+        <p>
+          {a('factor.recoveryWarning')} {a('recovery.usedWarning')}
+        </p>
+        <ul class="code-list" data-testid="recovery-code-list">
+          {newCodes.map((recovery) => (
+            <li>
+              <span class="secret">{recovery}</span>
+            </li>
+          ))}
+        </ul>
+        <p>
+          <a
+            class="button"
+            data-testid="recovery-download"
+            href={`data:text/plain;charset=utf-8,${encodeURIComponent(downloadText)}`}
+            download={a('factor.downloadName')}
+          >
+            {a('factor.download')}
+          </a>
+        </p>
+      </section>
+    )}
+
+    <p>
+      <span class="label-inline">{a('recovery.remaining')}</span>
+      <span class="secret" data-testid="recovery-remaining" data-count={remaining}>
+        {remaining}
+      </span>
+    </p>
+    {few && (
+      <div class="alert" role="alert" data-testid="recovery-warning">
+        <span class="label">{a('common.notice')}</span>
+        <p>{remaining === 0 ? a('recovery.none') : a('recovery.warning')}</p>
+      </div>
+    )}
+
+    <h2>{a('recovery.regenerateTitle')}</h2>
+    <p>{a('recovery.regenerateText')}</p>
+    <form method="post" action="/admin/codes-de-secours">
+      <input type="hidden" name="intent" value="regenerate" />
+      <button class="button" type="submit">
+        {a('recovery.regenerate')}
+      </button>
+    </form>
+  </div>
+</AdminLayout>
