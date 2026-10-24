@@ -1,0 +1,98 @@
+---
+// The code step after the password: an authenticator code, or a recovery code. The session counts
+// as logged in only after a valid one.
+import { a, codeLimitedText } from '../../admin/messages.ts';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { formText, readForm } from '../../server/admin/form.ts';
+import { codePath, landingPath } from '../../server/admin/guard.ts';
+import { verifyCode } from '../../server/admin/second-factor.ts';
+import { addSessionFactor } from '../../server/admin/sessions.ts';
+import { getDatabase } from '../../server/database.ts';
+
+export const prerender = false;
+
+const admin = Astro.locals.admin;
+const active = admin.active;
+if (!active) return Astro.redirect('/admin/connexion', 303);
+const { account, session } = active;
+// Already past this step: go where the account belongs.
+if (landingPath(account, session) !== codePath) {
+  return Astro.redirect(landingPath(account, session), 303);
+}
+
+let error: string | undefined;
+if (Astro.request.method === 'POST') {
+  const form = await readForm(Astro.request);
+  const { db } = await getDatabase();
+  const result = await verifyCode(db, admin.settings, account, formText(form, 'code'), admin.ip);
+  if (result.ok) {
+    await addSessionFactor(db, session.id, result.method);
+    return Astro.redirect(
+      landingPath(account, { factors: [...session.factors, result.method] }),
+      303,
+    );
+  }
+  if (result.reason === 'locked') {
+    error = codeLimitedText(result.retryAfterSeconds);
+    Astro.response.status = 429;
+    Astro.response.headers.set('Retry-After', String(result.retryAfterSeconds));
+  } else {
+    error = a('code.invalid');
+    Astro.response.status = 401;
+  }
+}
+---
+
+<AdminLayout title={a('code.title')} bare>
+  <div class="admin-narrow stack">
+    <h1>{a('code.title')}</h1>
+    <p>{a('code.intro')}</p>
+    {error && (
+      <div class="alert" role="alert" data-testid="code-error">
+        <span class="label">{a('common.error')}</span>
+        <p>{error}</p>
+      </div>
+    )}
+    <form method="post" action="/admin/verification" class="stack">
+      <div class="field">
+        <label for="code">{a('code.label')}</label>
+        <input
+          id="code"
+          name="code"
+          type="text"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          pattern="[0-9 ]*"
+          maxlength="12"
+          required
+        />
+      </div>
+      <button class="button" type="submit">
+        {a('code.submit')}
+      </button>
+    </form>
+    <p class="hint">{a('code.expiresHint')}</p>
+    <details class="stack">
+      <summary>{a('code.recoveryTitle')}</summary>
+      <p>{a('code.recoveryIntro')}</p>
+      <form method="post" action="/admin/verification" class="stack">
+        <div class="field">
+          <label for="recovery">{a('code.recoveryLabel')}</label>
+          <input
+            id="recovery"
+            name="code"
+            type="text"
+            autocomplete="off"
+            autocapitalize="characters"
+            spellcheck="false"
+            maxlength="20"
+            required
+          />
+        </div>
+        <button class="button" type="submit">
+          {a('code.recoverySubmit')}
+        </button>
+      </form>
+    </details>
+  </div>
+</AdminLayout>

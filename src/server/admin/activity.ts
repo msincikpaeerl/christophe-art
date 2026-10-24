@@ -12,6 +12,13 @@ export const activityActions = [
   'password_reset',
   'password_changed',
   'session_revoked',
+  'totp_enabled',
+  'totp_replaced',
+  'totp_failed',
+  'totp_locked',
+  'recovery_used',
+  'recovery_regenerated',
+  'totp_reset',
 ] as const;
 
 export type ActivityAction = (typeof activityActions)[number];

@@ -22,10 +22,16 @@ Le **dernier compte actif** ne peut pas être désactivé : il faut toujours qu'
 
 Dans la liste, choisissez « Réinitialiser le mot de passe » en face du compte. Le site affiche un nouveau mot de passe temporaire (une seule fois). Les sessions de la personne sont fermées et elle devra le changer à sa prochaine connexion. Pour votre propre mot de passe, utilisez « Mon mot de passe » dans le menu.
 
+## Réinitialiser la double authentification d'une autre personne
+
+Si quelqu'un a perdu son téléphone **et** ses codes de secours, choisissez « Réinitialiser la double authentification » en face de son compte (le bouton n'existe que si le compte en a une, et jamais sur votre propre ligne : vous ne pouvez pas retirer la vôtre). Les sessions de la personne sont fermées, ses codes de secours sont supprimés, et un éventuel verrouillage est levé. À sa prochaine connexion, elle devra configurer de nouveau sa double authentification ([Activer la double authentification](activer-la-double-authentification.md)).
+
+La colonne « Double authentification » de la liste indique si chaque compte l'a activée. Un compte qui ne l'a pas encore ne peut rien faire d'autre que la configurer.
+
 ## Réinitialiser un mot de passe depuis le serveur
 
 Si plus personne ne peut se connecter, la personne qui gère le serveur peut créer un compte ou réinitialiser un mot de passe avec une commande. Voir [la mise en place](../dev/setup.md#admin-accounts).
 
 ## Le journal d'activité
 
-La section « Journal » liste, de la plus récente à la plus ancienne, les actions sur les comptes : connexions, échecs de connexion, créations, désactivations et réactivations, réinitialisations, changements de mot de passe et sessions fermées. Pour chacune : la date, qui l'a faite, l'action, la personne concernée et l'adresse IP. Le journal est découpé en pages de 25 lignes ; utilisez « Page précédente » et « Page suivante ». Une action faite depuis le serveur est notée « Commande serveur ».
+La section « Journal » liste, de la plus récente à la plus ancienne, les actions sur les comptes : connexions, échecs de connexion, créations, désactivations et réactivations, réinitialisations, changements de mot de passe, sessions fermées et tout ce qui touche à la double authentification (activation, remplacement, codes faux, verrouillage, code de secours utilisé, nouveau jeu de codes, réinitialisation). Pour chacune : la date, qui l'a faite, l'action, la personne concernée et l'adresse IP. Le journal est découpé en pages de 25 lignes ; utilisez « Page précédente » et « Page suivante ». Une action faite depuis le serveur est notée « Commande serveur ».

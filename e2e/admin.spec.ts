@@ -1,19 +1,20 @@
 import { expect, test } from '@playwright/test';
-import type { Browser, Page } from '@playwright/test';
+import type { Cookie, Page } from '@playwright/test';
 import { adminRoutes, publicAdminRoutes } from '../src/test-support/admin-routes.ts';
-import { cookieAccount, seedPassword } from './admin-accounts.ts';
+import { cookieAccount, nextCode, seedPassword, seedTotpSecret } from './admin-accounts.ts';
+import {
+  completeSetup,
+  logInWithRecovery,
+  logOut,
+  origin,
+  otherVisitor,
+  submitAppCode,
+  submitPassword,
+} from './admin-helpers.ts';
 
 const strongPassword = 'Mot-de-passe-solide-17';
-const origin = 'http://127.0.0.1:4322';
 // What a browser sends for a form of the site itself (the request helper sends neither header).
 const sameSite = { origin, 'sec-fetch-site': 'same-origin' };
-
-async function logIn(page: Page, email: string, password: string) {
-  await page.goto('/admin/connexion');
-  await page.getByLabel('Email', { exact: true }).fill(email);
-  await page.getByLabel('Mot de passe', { exact: true }).fill(password);
-  await page.getByRole('button', { name: 'Se connecter' }).click();
-}
 
 async function changePassword(page: Page, current: string, next: string) {
   await page.getByLabel('Mot de passe actuel').fill(current);
@@ -22,24 +23,20 @@ async function changePassword(page: Page, current: string, next: string) {
   await page.getByRole('button', { name: 'Changer le mot de passe' }).click();
 }
 
-/** A visitor with a browser of their own, to play the other admin. */
-async function otherVisitor(browser: Browser) {
-  const context = await browser.newContext({ baseURL: origin });
-  return { page: await context.newPage(), close: () => context.close() };
-}
-
-async function logOut(page: Page) {
-  await page.locator('.account-menu summary').click();
-  await page.getByRole('button', { name: 'Se déconnecter' }).click();
-  await expect(page).toHaveURL(/\/admin\/connexion$/);
-}
-
 test.describe('the admin area', () => {
   test.describe.configure({ mode: 'serial' });
 
   let me = '';
   let colleague = '';
   let colleagueTemporary = '';
+  let colleagueCodes: string[] = [];
+  // A code works once and the next one can be up to 30 seconds away, so the tests do not log in
+  // again and again: the first login keeps its session cookies and the others reuse them.
+  let myCookies: Cookie[] = [];
+
+  async function signIn(page: Page) {
+    await page.context().addCookies(myCookies);
+  }
 
   // eslint-disable-next-line no-empty-pattern -- Playwright needs a destructured first argument
   test.beforeAll(({}, testInfo) => {
@@ -54,14 +51,24 @@ test.describe('the admin area', () => {
   });
 
   test('a wrong password and an unknown email give the same message', async ({ page }) => {
-    await logIn(page, me, 'not-the-password-123');
+    await submitPassword(page, me, 'not-the-password-123');
     await expect(page.getByTestId('login-error')).toContainText('Email ou mot de passe incorrect');
-    await logIn(page, 'nobody@example.test', 'not-the-password-123');
+    await submitPassword(page, 'nobody@example.test', 'not-the-password-123');
     await expect(page.getByTestId('login-error')).toContainText('Email ou mot de passe incorrect');
   });
 
-  test('first login with the temporary password forces a new password', async ({ page }) => {
-    await logIn(page, me, seedPassword);
+  test('first login: the code step, then the temporary password must be changed', async ({
+    page,
+  }) => {
+    await submitPassword(page, me, seedPassword);
+    // The account has a second factor: a password alone opens nothing.
+    await expect(page).toHaveURL(/\/admin\/verification$/);
+    await page.goto('/admin/comptes');
+    await expect(page).toHaveURL(/\/admin\/verification$/);
+    await page.goto('/admin/mot-de-passe');
+    await expect(page).toHaveURL(/\/admin\/verification$/);
+
+    await submitAppCode(page, await nextCode(seedTotpSecret, me));
     await expect(page).toHaveURL(/\/admin\/mot-de-passe$/);
     await expect(page.getByTestId('must-change')).toBeVisible();
     await expect(page.getByRole('link', { name: 'Comptes' })).toHaveCount(0);
@@ -77,10 +84,11 @@ test.describe('the admin area', () => {
     await expect(page.getByTestId('password-done')).toBeVisible();
     await page.goto('/admin/comptes');
     await expect(page.getByRole('heading', { level: 1, name: 'Comptes' })).toBeVisible();
+    myCookies = await page.context().cookies();
   });
 
   test('an admin creates an account and sees its temporary password once', async ({ page }) => {
-    await logIn(page, me, strongPassword);
+    await signIn(page);
     await page.goto('/admin/comptes/nouveau');
     await page.getByLabel('Nom affiché').fill('Collègue de test');
     await page.getByLabel('Email de connexion').fill(colleague);
@@ -96,11 +104,22 @@ test.describe('the admin area', () => {
     await expect(page.getByText(colleagueTemporary)).toHaveCount(0);
   });
 
-  test('the new account logs in with the temporary password and must change it', async ({
+  test('the new account sets up its second factor, then must change its password', async ({
     browser,
   }) => {
     const other = await otherVisitor(browser);
-    await logIn(other.page, colleague, colleagueTemporary);
+    await submitPassword(other.page, colleague, colleagueTemporary);
+    // No second factor yet: the setup screen is the only page.
+    await expect(other.page).toHaveURL(/\/admin\/double-authentification$/);
+    await expect(other.page.getByTestId('must-setup')).toBeVisible();
+    await other.page.goto('/admin/comptes');
+    await expect(other.page).toHaveURL(/\/admin\/double-authentification$/);
+
+    const setup = await completeSetup(other.page, colleague);
+    colleagueCodes = setup.recoveryCodes;
+    expect(colleagueCodes).toHaveLength(10);
+
+    await other.page.goto('/admin/comptes');
     await expect(other.page).toHaveURL(/\/admin\/mot-de-passe$/);
     await changePassword(other.page, colleagueTemporary, strongPassword);
     await expect(other.page.getByTestId('password-done')).toBeVisible();
@@ -114,10 +133,10 @@ test.describe('the admin area', () => {
     browser,
   }) => {
     const other = await otherVisitor(browser);
-    await logIn(other.page, colleague, strongPassword);
+    await logInWithRecovery(other.page, colleague, strongPassword, colleagueCodes[0] ?? '');
     await expect(other.page).toHaveURL(/\/admin\/comptes$/);
 
-    await logIn(page, me, strongPassword);
+    await signIn(page);
     await page.goto('/admin/comptes');
     const row = page.locator(`tr[data-account="${colleague}"]`);
     await row.getByRole('button', { name: 'Désactiver' }).click();
@@ -127,14 +146,14 @@ test.describe('the admin area', () => {
     // The colleague's open session ended at once.
     await other.page.goto('/admin/journal');
     await expect(other.page).toHaveURL(/\/admin\/connexion$/);
-    await logIn(other.page, colleague, strongPassword);
+    await submitPassword(other.page, colleague, strongPassword);
     await expect(other.page.getByTestId('login-error')).toContainText(
       'Email ou mot de passe incorrect',
     );
 
     await row.getByRole('button', { name: 'Réactiver' }).click();
     await expect(row).toContainText('Actif');
-    await logIn(other.page, colleague, strongPassword);
+    await logInWithRecovery(other.page, colleague, strongPassword, colleagueCodes[1] ?? '');
     await expect(other.page).toHaveURL(/\/admin\/comptes$/);
     await other.close();
   });
@@ -143,7 +162,7 @@ test.describe('the admin area', () => {
     page,
     browser,
   }) => {
-    await logIn(page, me, strongPassword);
+    await signIn(page);
     await page.goto('/admin/comptes');
     await expect(
       page.locator(`tr[data-account="${me}"]`).getByRole('button', { name: /Réinitialiser/ }),
@@ -157,16 +176,16 @@ test.describe('the admin area', () => {
     const temporary = (await shown.textContent()) ?? '';
 
     const other = await otherVisitor(browser);
-    await logIn(other.page, colleague, strongPassword);
+    await submitPassword(other.page, colleague, strongPassword);
     await expect(other.page.getByTestId('login-error')).toBeVisible();
-    await logIn(other.page, colleague, temporary);
+    await logInWithRecovery(other.page, colleague, temporary, colleagueCodes[2] ?? '');
     await expect(other.page).toHaveURL(/\/admin\/mot-de-passe$/);
     await expect(other.page.getByTestId('must-change')).toBeVisible();
     await other.close();
   });
 
   test('an admin sees the activity log and their own sessions', async ({ page }) => {
-    await logIn(page, me, strongPassword);
+    await signIn(page);
     await page.goto('/admin/journal');
     const table = page.getByRole('table', { name: 'Journal' });
     // Newest first, 25 per page: the latest events are on the first page.
@@ -183,30 +202,24 @@ test.describe('the admin area', () => {
   }) => {
     const email = `limit-${Date.now().toString()}@example.test`;
     for (let attempt = 0; attempt < 5; attempt++) {
-      await logIn(page, email, 'not-the-password-123');
+      await submitPassword(page, email, 'not-the-password-123');
       await expect(page.getByTestId('login-error')).toContainText(
         'Email ou mot de passe incorrect',
       );
     }
-    await logIn(page, email, 'not-the-password-123');
+    await submitPassword(page, email, 'not-the-password-123');
     await expect(page.getByTestId('login-error')).toContainText(/Réessayez dans \d+ minutes?/);
   });
 
-  test('an admin logs out', async ({ page }) => {
-    await logIn(page, me, strongPassword);
-    await page.goto('/admin/comptes');
-    await logOut(page);
-    await page.goto('/admin/comptes');
-    await expect(page).toHaveURL(/\/admin\/connexion$/);
-  });
-
   test('the admin pages fit the screen without sideways scrolling', async ({ page }) => {
-    await logIn(page, me, strongPassword);
+    await signIn(page);
     for (const path of [
       '/admin/comptes',
       '/admin/journal',
       '/admin/sessions',
       '/admin/comptes/nouveau',
+      '/admin/double-authentification',
+      '/admin/codes-de-secours',
     ]) {
       await page.goto(path);
       const overflow = await page.evaluate(
@@ -215,12 +228,20 @@ test.describe('the admin area', () => {
       expect(overflow, path).toBeLessThanOrEqual(0);
     }
   });
+
+  test('an admin logs out', async ({ page }) => {
+    await signIn(page);
+    await page.goto('/admin/comptes');
+    await logOut(page);
+    await page.goto('/admin/comptes');
+    await expect(page).toHaveURL(/\/admin\/connexion$/);
+  });
 });
 
 test.describe('admin security', () => {
   test('every admin page refuses a visitor without a session', async ({ request }) => {
     const routes = adminRoutes().filter((route) => !publicAdminRoutes.includes(route));
-    expect(routes.length).toBeGreaterThanOrEqual(6);
+    expect(routes.length).toBeGreaterThanOrEqual(9);
     for (const route of routes) {
       const get = await request.get(route, { maxRedirects: 0 });
       expect(get.status(), `GET ${route}`).toBe(303);
@@ -258,6 +279,7 @@ test.describe('admin security', () => {
       form: { email: cookieAccount, password: seedPassword },
     });
     expect(response.status()).toBe(303);
+    expect(response.headers()['location']).toBe('/admin/verification');
     const cookie = response.headers()['set-cookie'] ?? '';
     expect(cookie).toMatch(/^admin_session=[\w-]{43,};/);
     expect(cookie).toMatch(/HttpOnly/i);
