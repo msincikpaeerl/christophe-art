@@ -1,0 +1,92 @@
+---
+import '../styles/global.css';
+import '../styles/admin.css';
+import { a } from '../admin/messages.ts';
+
+interface Props {
+  title: string;
+  /** The navigation section being shown. */
+  current?: 'accounts' | 'activity' | undefined;
+  /** Hides the navigation and the account menu (login page, forced password change). */
+  bare?: boolean;
+}
+
+const { title, current, bare = false } = Astro.props;
+const account = Astro.locals.admin.active?.account;
+const sections = [
+  { key: 'accounts', href: '/admin/comptes', label: a('nav.accounts') },
+  { key: 'activity', href: '/admin/journal', label: a('nav.activity') },
+] as const;
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>{title} · {a('layout.title')}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#content">
+      {a('layout.skip')}
+    </a>
+    <header class="admin-header">
+      <div class="container admin-bar">
+        <a class="admin-name" href="/admin/comptes">
+          {a('layout.title')}
+        </a>
+        {!bare && account && (
+          <>
+            <nav class="admin-nav" aria-label={a('layout.nav')}>
+              <ul>
+                {sections.map((section) => (
+                  <li>
+                    <a
+                      href={section.href}
+                      aria-current={current === section.key ? 'page' : undefined}
+                    >
+                      {section.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            <details class="account-menu">
+              <summary>{account.displayName}</summary>
+              <ul class="account-menu-list">
+                <li>
+                  <a href="/admin/mot-de-passe">{a('menu.password')}</a>
+                </li>
+                <li>
+                  <a href="/admin/sessions">{a('menu.sessions')}</a>
+                </li>
+                <li>
+                  <form method="post" action="/admin/deconnexion">
+                    <button type="submit">{a('menu.logout')}</button>
+                  </form>
+                </li>
+              </ul>
+            </details>
+          </>
+        )}
+        {bare && account && (
+          <form method="post" action="/admin/deconnexion">
+            <button class="button" type="submit">
+              {a('menu.logout')}
+            </button>
+          </form>
+        )}
+      </div>
+    </header>
+    <main id="content" class="container admin-page">
+      <slot />
+    </main>
+  </body>
+</html>
+
+<style>
+  main {
+    flex: 1;
+  }
+</style>

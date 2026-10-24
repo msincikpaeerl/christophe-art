@@ -1,0 +1,64 @@
+---
+// The activity log of account actions, newest first, with paging.
+import { a, actionText, dateTimeText, pageText } from '../../admin/messages.ts';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { listActivity } from '../../server/admin/activity.ts';
+import { serverActor } from '../../server/admin/activity.ts';
+import { getDatabase } from '../../server/database.ts';
+
+export const prerender = false;
+
+if (!Astro.locals.admin.active) return Astro.redirect('/admin/connexion', 303);
+
+const { db } = await getDatabase();
+const log = await listActivity(db, Number(Astro.url.searchParams.get('page') ?? '1'));
+const who = (actor: string) => (actor === serverActor ? a('common.serverCommand') : actor);
+---
+
+<AdminLayout title={a('activity.title')} current="activity">
+  <div class="stack">
+    <h1>{a('activity.title')}</h1>
+    <p>{a('activity.intro')}</p>
+    {log.entries.length === 0 ? (
+      <p>{a('activity.empty')}</p>
+    ) : (
+      <div class="table-wrap">
+        <table class="admin-table" aria-label={a('activity.list')}>
+          <thead>
+            <tr>
+              <th scope="col">{a('activity.date')}</th>
+              <th scope="col">{a('activity.who')}</th>
+              <th scope="col">{a('activity.what')}</th>
+              <th scope="col">{a('activity.target')}</th>
+              <th scope="col">{a('activity.ip')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {log.entries.map((entry) => (
+              <tr>
+                <td>{dateTimeText(entry.at)}</td>
+                <td>{who(entry.actor)}</td>
+                <td>{actionText(entry.action)}</td>
+                <td>{entry.target ?? ''}</td>
+                <td>{entry.ip}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )}
+    <nav class="pager" aria-label={a('activity.pagination')}>
+      {log.page > 1 && (
+        <a href={`/admin/journal?page=${String(log.page - 1)}`} rel="prev">
+          {a('activity.previous')}
+        </a>
+      )}
+      <span data-testid="page-position">{pageText(log.page, log.pageCount)}</span>
+      {log.page < log.pageCount && (
+        <a href={`/admin/journal?page=${String(log.page + 1)}`} rel="next">
+          {a('activity.next')}
+        </a>
+      )}
+    </nav>
+  </div>
+</AdminLayout>

@@ -1,0 +1,159 @@
+---
+// The accounts: list, disable, re-enable and reset a password. Actions are POSTs to this page.
+import { a, dateTimeText, errorText } from '../../../admin/messages.ts';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import {
+  disableAccount,
+  enableAccount,
+  listAccounts,
+  resetPassword,
+} from '../../../server/admin/accounts.ts';
+import { formText, readForm } from '../../../server/admin/form.ts';
+import { sessionCookieName } from '../../../server/admin/settings.ts';
+import { getDatabase } from '../../../server/database.ts';
+
+export const prerender = false;
+
+const admin = Astro.locals.admin;
+const active = admin.active;
+if (!active) return Astro.redirect('/admin/connexion', 303);
+
+const { db } = await getDatabase();
+const actor = { name: active.account.displayName, ip: admin.ip };
+let error: string | undefined;
+let notice: string | undefined;
+let reset: { name: string; email: string; password: string } | undefined;
+
+if (Astro.request.method === 'POST') {
+  const form = await readForm(Astro.request);
+  const intent = formText(form, 'intent');
+  const id = formText(form, 'id');
+  if (intent === 'disable') {
+    const result = await disableAccount(db, id, actor);
+    if (result.ok) {
+      if (id === active.account.id) {
+        // Disabling your own account ends your own session too.
+        Astro.cookies.delete(sessionCookieName, { path: '/admin' });
+        return Astro.redirect('/admin/connexion', 303);
+      }
+      notice = a('accounts.disabledDone');
+    } else {
+      error = errorText(result.error);
+    }
+  } else if (intent === 'enable') {
+    const result = await enableAccount(db, id, actor);
+    if (result.ok) notice = a('accounts.enabledDone');
+    else error = errorText(result.error);
+  } else if (intent === 'reset') {
+    const result = await resetPassword(db, id, actor, active.account.id);
+    if (result.ok) {
+      reset = {
+        name: result.account.displayName,
+        email: result.account.email,
+        password: result.temporaryPassword,
+      };
+    } else {
+      error = errorText(result.error);
+    }
+  } else {
+    error = errorText('not_found');
+  }
+  if (error) Astro.response.status = 422;
+}
+
+const accounts = await listAccounts(db);
+---
+
+<AdminLayout title={a('accounts.title')} current="accounts">
+  <div class="stack">
+    <h1>{a('accounts.title')}</h1>
+    <p>{a('accounts.intro')}</p>
+    <p>
+      <a class="button" href="/admin/comptes/nouveau">
+        {a('accounts.create')}
+      </a>
+    </p>
+
+    {reset && (
+      <section class="stack" data-testid="temporary-password" aria-labelledby="temporary-title">
+        <h2 id="temporary-title">{a('accounts.temporaryTitle')}</h2>
+        <p>
+          {a('accounts.temporaryFor')} : {reset.name} · {reset.email}
+        </p>
+        <p>
+          <span class="secret" data-testid="temporary-password-value">
+            {reset.password}
+          </span>
+        </p>
+        <p>{a('accounts.temporaryWarning')}</p>
+      </section>
+    )}
+    {notice && (
+      <div class="alert" role="status" data-testid="accounts-notice">
+        <span class="label">{a('common.notice')}</span>
+        <p>{notice}</p>
+      </div>
+    )}
+    {error && (
+      <div class="alert" role="alert" data-testid="accounts-error">
+        <span class="label">{a('common.error')}</span>
+        <p>{error}</p>
+      </div>
+    )}
+
+    <div class="table-wrap">
+      <table class="admin-table" aria-label={a('accounts.list')}>
+        <thead>
+          <tr>
+            <th scope="col">{a('accounts.name')}</th>
+            <th scope="col">{a('accounts.email')}</th>
+            <th scope="col">{a('accounts.status')}</th>
+            <th scope="col">{a('accounts.created')}</th>
+            <th scope="col">{a('accounts.lastLogin')}</th>
+            <th scope="col">{a('accounts.actions')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {accounts.map((account) => (
+            <tr data-account={account.email}>
+              <td>
+                {account.displayName}
+                {account.id === active.account.id && <> ({a('accounts.you')})</>}
+              </td>
+              <td>{account.email}</td>
+              <td data-testid="status">
+                {account.status === 'active' ? a('accounts.active') : a('accounts.disabled')}
+              </td>
+              <td>{dateTimeText(account.createdAt)}</td>
+              <td>{account.lastLoginAt ? dateTimeText(account.lastLoginAt) : a('common.never')}</td>
+              <td>
+                <div class="row-actions">
+                  <form method="post" action="/admin/comptes">
+                    <input type="hidden" name="id" value={account.id} />
+                    <input
+                      type="hidden"
+                      name="intent"
+                      value={account.status === 'active' ? 'disable' : 'enable'}
+                    />
+                    <button class="button" type="submit">
+                      {account.status === 'active' ? a('accounts.disable') : a('accounts.enable')}
+                    </button>
+                  </form>
+                  {account.id !== active.account.id && (
+                    <form method="post" action="/admin/comptes">
+                      <input type="hidden" name="id" value={account.id} />
+                      <input type="hidden" name="intent" value="reset" />
+                      <button class="button" type="submit">
+                        {a('accounts.reset')}
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</AdminLayout>

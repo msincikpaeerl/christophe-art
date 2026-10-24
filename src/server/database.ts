@@ -26,7 +26,10 @@ export async function openDatabase(url: string): Promise<DatabaseHandle> {
       import('drizzle-orm/pglite'),
       import('drizzle-orm/pglite/migrator'),
     ]);
-    const client = new PGlite();
+    // `pglite://memory` lives in memory; `pglite://<folder>` keeps its files in that folder, so
+    // several processes can use the same data one after the other (end-to-end tests).
+    const folder = url.slice('pglite://'.length);
+    const client = folder === 'memory' ? new PGlite() : new PGlite(folder);
     const db = drizzle(client);
     return {
       db,

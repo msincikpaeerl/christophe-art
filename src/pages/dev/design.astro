@@ -1,5 +1,6 @@
 ---
 // Development-only showcase of the palette and every component (served when DEV_PAGES=true).
+import '../../styles/admin.css';
 import ArtworkCard from '../../components/ArtworkCard.astro';
 import LoadingState from '../../components/LoadingState.astro';
 import LocalizedText from '../../components/LocalizedText.astro';
@@ -115,6 +116,51 @@ const spaces = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
         English text with a French fallback:{' '}
         <LocalizedText value={{ fr: 'Arbre hexagonal', en: '' }} locale="en" />
       </p>
+
+      <h3 id="admin">Admin (sober variant)</h3>
+      <div class="stack" data-testid="admin-sample">
+        <div class="field">
+          <label for="sample-email">Email</label>
+          <input id="sample-email" type="email" value="name@example.com" />
+          <p class="hint">A hint under a field.</p>
+        </div>
+        <div class="alert" role="status">
+          <span class="label">Information</span>
+          <p>A message: a strong line and a label, no extra colour.</p>
+        </div>
+        <p>
+          <span class="secret">Kq7vXm2wLp9dRt4n</span>
+        </p>
+        <div class="table-wrap">
+          <table class="admin-table" aria-label="Sample table">
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Status</th>
+                <th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Alice</td>
+                <td>Active</td>
+                <td>
+                  <div class="row-actions">
+                    <button class="button" type="button">
+                      Disable
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <nav class="pager" aria-label="Sample pager">
+          <a href="/dev/design">Previous page</a>
+          <span>Page 2 of 5</span>
+          <a href="/dev/design">Next page</a>
+        </nav>
+      </div>
 
       <h3>Anthracite section</h3>
       <div class="surface-dark dark-sample">

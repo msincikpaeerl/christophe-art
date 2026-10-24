@@ -5,3 +5,4 @@ dist/
 uploads/
 playwright-report/
 test-results/
+.e2e-db/

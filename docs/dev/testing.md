@@ -26,7 +26,14 @@ Each test file asks `createTestDatabase()` (`src/test-support/database.ts`) for 
 
 ## End-to-end tests
 
-`pnpm test:e2e` builds the site, starts it on port 4322 with an in-memory database, and runs the tests on a desktop and a phone viewport. First time on a machine: `pnpm exec playwright install chromium` (on Linux add `--with-deps` to install the system libraries; it needs administrator rights).
+`pnpm test:e2e` builds the site, starts it on port 4322 with a throwaway database, and runs the tests on a desktop and a phone viewport. First time on a machine: `pnpm exec playwright install chromium` (on Linux add `--with-deps` to install the system libraries; it needs administrator rights).
+
+The server keeps its PGlite database in the folder `.e2e-db` (deleted at each run) instead of memory, so that the admin accounts the tests need can be created first with `pnpm admin:create`, the same command as in production (list in `e2e/admin-accounts.ts`). The per-IP login limit is raised for the run, because every test comes from the same address.
+
+### Admin checks
+
+- `src/server/admin/*.int.test.ts`: accounts, login (same message and same time whether the account exists or not, limits per account and per IP), sessions (token, idle and maximum lifetime, revocation), activity log paging, and `routes.int.test.ts`, which **lists the files of `src/pages/admin/` itself** and checks that every route refuses a visitor without a session, that every change needs the right `Origin`, and that encoded paths do not slip past the guard. A new admin page is covered without editing the test.
+- `e2e/admin.spec.ts` (desktop and phone, in a browser): first login with a temporary password, account creation, disable and re-enable, reset, login limit, logout, no sideways scrolling. `e2e/admin-http.spec.ts` runs the same flows over plain HTTP, and the "admin security" part of `admin.spec.ts` checks the cookie flags, `X-Robots-Tag` and `robots.txt`. A request made with Playwright's `request` helper must send `Origin` and `Sec-Fetch-Site: same-origin` like a browser does.
 
 ### Design checks
 

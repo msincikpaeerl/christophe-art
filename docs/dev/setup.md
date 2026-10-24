@@ -45,6 +45,33 @@ docker compose down
 
 `compose.yml` starts PostgreSQL and the application. The application starts only once the database reports healthy, restarts unless stopped, and keeps data in the named volumes `db-data` (database) and `uploads` (uploaded images). The image is built from the multi-stage [`Dockerfile`](../../Dockerfile): production dependencies only, a non-root user, and a health check on `/health`. Agents cannot run Docker; CI builds the image and runs this smoke test.
 
+## Admin accounts
+
+The admin area (`/admin`) has no sign-up: the first account is created on the server.
+
+```
+pnpm admin:create --email you@example.com --name "Your Name"
+```
+
+The command applies the migrations if needed, creates the account and prints a **temporary password, once**. The account must change it at its first login ([Se connecter](../user/se-connecter.md)). `--temporary-password <password>` sets a chosen one instead (it must follow the password rules, and it ends up in your shell history). The login email is only an identifier: the site never sends email.
+
+To reset a password when nobody can sign in, or from the server in general:
+
+```
+pnpm admin:reset-password --email you@example.com
+```
+
+It ends the account's sessions, prints a new temporary password once, and requires a change at the next login. Both commands write to the activity log as "Commande serveur".
+
+In the Docker stack, the commands run inside the application container, which keeps pnpm for that purpose and already has the database settings:
+
+```
+docker compose exec app pnpm admin:create --email you@example.com --name "Your Name"
+docker compose exec app pnpm admin:reset-password --email you@example.com
+```
+
+Login limits, session durations and the proxy setting are environment variables (`ADMIN_LOGIN_MAX_FAILURES_PER_ACCOUNT`, `ADMIN_LOGIN_MAX_FAILURES_PER_IP`, `ADMIN_LOGIN_WINDOW_MINUTES`, `ADMIN_SESSION_IDLE_MINUTES`, `ADMIN_SESSION_MAX_HOURS`, `TRUST_PROXY`), described in `.env.example`. Behind a reverse proxy set `SITE_URL` to the public address (the admin compares the `Origin` header with it) and `TRUST_PROXY=true`. The design is in [ADR 0011](../adr/0011-admin-accounts-sessions-and-passwords.md).
+
 ## Dependencies
 
 Versions are pinned exactly and `pnpm-lock.yaml` is committed. Before adding or upgrading a package, check `npm view <package> version`, install with `pnpm add --save-exact`, and commit the lock file. `pnpm audit --audit-level high` must pass.

@@ -1,0 +1,235 @@
+/* Admin area: the sober variant of the site identity (docs/design.md). Light background, copper
+   only for actions, no hexagon pattern. Values come from tokens.css. */
+
+.admin-header {
+  background: var(--surface-light-raised);
+  border-bottom: var(--line-width) solid var(--line);
+}
+.admin-bar {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-5);
+  padding-block: var(--space-3);
+}
+.admin-name {
+  font-family: var(--font-heading);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-heading);
+  letter-spacing: var(--tracking-heading);
+  color: var(--text);
+  text-decoration: none;
+}
+.admin-nav {
+  order: 3;
+  width: 100%;
+}
+.admin-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.admin-nav a,
+.account-menu summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target);
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: var(--line-width-strong) solid transparent;
+}
+.admin-nav a:hover,
+.account-menu summary:hover {
+  color: var(--accent);
+}
+.admin-nav a[aria-current='page'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.account-menu summary {
+  cursor: pointer;
+}
+.account-menu[open] > summary {
+  color: var(--text);
+}
+.account-menu-list {
+  position: absolute;
+  right: var(--layout-gutter);
+  z-index: 5;
+  min-width: 14rem;
+  margin: 0;
+  padding: var(--space-2);
+  list-style: none;
+  background: var(--surface-light-raised);
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--radius-plate);
+}
+.account-menu-list a,
+.account-menu-list button {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: var(--touch-target);
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.account-menu-list a:hover,
+.account-menu-list button:hover {
+  text-decoration: underline;
+}
+
+.admin-page {
+  padding-block: var(--space-6);
+}
+.admin-page h1 {
+  font-size: var(--text-2xl);
+}
+.admin-page h2 {
+  font-size: var(--text-xl);
+}
+.admin-narrow {
+  max-width: 32rem;
+}
+
+.stack > * + * {
+  margin-top: var(--space-4);
+}
+
+/* Forms */
+.field {
+  display: grid;
+  gap: var(--space-1);
+}
+.field label {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.field input {
+  width: 100%;
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-3);
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--radius-plate);
+  background: var(--surface-light-raised);
+  color: var(--text);
+  font: inherit;
+}
+.field .hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+/* Messages: a strong line and a label, no extra colour. */
+.alert {
+  padding: var(--space-3) var(--space-4);
+  border: var(--line-width) solid var(--line);
+  border-left: var(--line-width-strong) solid var(--text);
+  border-radius: var(--radius-plate);
+  background: var(--surface-light-raised);
+}
+.alert p {
+  margin: 0;
+}
+.alert .label {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--text);
+}
+
+/* A secret shown once, such as a temporary password. */
+.secret {
+  display: inline-block;
+  padding: var(--space-2) var(--space-4);
+  border: var(--line-width-strong) solid var(--line);
+  border-radius: var(--radius-plate);
+  background: var(--surface-light-raised);
+  font-family: var(--font-label);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+
+/* Tables scroll inside their frame, never the page. */
+.table-wrap {
+  overflow-x: auto;
+  border: var(--line-width) solid var(--line);
+  border-radius: var(--radius-plate);
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.admin-table th,
+.admin-table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: var(--line-width) solid var(--line);
+}
+.admin-table tr:last-child td {
+  border-bottom: 0;
+}
+.admin-table th {
+  font-family: var(--font-label);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.admin-table td {
+  min-width: 7rem;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.row-actions form {
+  margin: 0;
+}
+
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+@media (min-width: 48em) {
+  .admin-nav {
+    order: 0;
+    width: auto;
+    margin-right: auto;
+    margin-left: var(--space-6);
+  }
+  .admin-page {
+    padding-block: var(--space-7);
+  }
+}

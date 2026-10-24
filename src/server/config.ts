@@ -23,6 +23,21 @@ const schema = z
       })
       .transform((value) => value.replace(/\/$/, ''))
       .optional(),
+    /** Failed logins allowed per account (login email, even unknown) inside the window. */
+    ADMIN_LOGIN_MAX_FAILURES_PER_ACCOUNT: z.coerce.number().int().min(1).max(1000).default(5),
+    /** Failed logins allowed per IP address inside the window. */
+    ADMIN_LOGIN_MAX_FAILURES_PER_IP: z.coerce.number().int().min(1).max(100000).default(20),
+    /** Length of the failed-login window, in minutes. */
+    ADMIN_LOGIN_WINDOW_MINUTES: z.coerce.number().int().min(1).max(1440).default(15),
+    /** An admin session ends after this many minutes without activity. */
+    ADMIN_SESSION_IDLE_MINUTES: z.coerce.number().int().min(1).max(10080).default(60),
+    /** An admin session ends this many hours after login, whatever the activity. */
+    ADMIN_SESSION_MAX_HOURS: z.coerce.number().int().min(1).max(720).default(12),
+    /** Behind a reverse proxy: take the client address from X-Forwarded-For (last entry). */
+    TRUST_PROXY: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
     /** Serves the design showcase page (`/dev/design`). Off by default; never enable in production. */
     DEV_PAGES: z
       .enum(['true', 'false'])

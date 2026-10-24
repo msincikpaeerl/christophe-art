@@ -1,0 +1,89 @@
+---
+// Creates an account with a temporary password, shown once in the answer to the form.
+import { a, errorText } from '../../../admin/messages.ts';
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { createAccount } from '../../../server/admin/accounts.ts';
+import { formText, readForm } from '../../../server/admin/form.ts';
+import { getDatabase } from '../../../server/database.ts';
+
+export const prerender = false;
+
+const admin = Astro.locals.admin;
+const active = admin.active;
+if (!active) return Astro.redirect('/admin/connexion', 303);
+
+let error: string | undefined;
+let created: { name: string; email: string; password: string } | undefined;
+let name = '';
+let email = '';
+if (Astro.request.method === 'POST') {
+  const form = await readForm(Astro.request);
+  name = formText(form, 'name');
+  email = formText(form, 'email');
+  const { db } = await getDatabase();
+  const result = await createAccount(db, {
+    displayName: name,
+    email,
+    actor: { name: active.account.displayName, ip: admin.ip },
+  });
+  if (result.ok) {
+    created = {
+      name: result.account.displayName,
+      email: result.account.email,
+      password: result.temporaryPassword,
+    };
+  } else {
+    error = errorText(result.error);
+    Astro.response.status = 422;
+  }
+}
+---
+
+<AdminLayout title={a('new.title')} current="accounts">
+  <div class="admin-narrow stack">
+    <h1>{a('new.title')}</h1>
+    {created ? (
+      <div class="stack" data-testid="temporary-password">
+        <div class="alert" role="status">
+          <span class="label">{a('new.done')}</span>
+          <p>
+            {created.name} · {created.email}
+          </p>
+        </div>
+        <h2>{a('accounts.temporaryTitle')}</h2>
+        <p>
+          <span class="secret" data-testid="temporary-password-value">
+            {created.password}
+          </span>
+        </p>
+        <p>{a('accounts.temporaryWarning')}</p>
+        <p>
+          <a href="/admin/comptes">{a('accounts.back')}</a>
+        </p>
+      </div>
+    ) : (
+      <>
+        {error && (
+          <div class="alert" role="alert" data-testid="new-error">
+            <span class="label">{a('common.error')}</span>
+            <p>{error}</p>
+          </div>
+        )}
+        <form method="post" action="/admin/comptes/nouveau" class="stack">
+          <div class="field">
+            <label for="name">{a('new.name')}</label>
+            <input id="name" name="name" type="text" maxlength="80" required value={name} />
+          </div>
+          <div class="field">
+            <label for="email">{a('new.email')}</label>
+            <input id="email" name="email" type="email" autocomplete="off" required value={email} />
+            <p class="hint">{a('new.emailHint')}</p>
+          </div>
+          <button class="button" type="submit">
+            {a('new.submit')}
+          </button>
+        </form>
+      </>
+    )}
+  </div>
+</AdminLayout>

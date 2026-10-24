@@ -1,0 +1,87 @@
+---
+// Login page: the only /admin page open to visitors.
+import { a, limitedText } from '../../admin/messages.ts';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { formText, readForm } from '../../server/admin/form.ts';
+import { attemptLogin } from '../../server/admin/login.ts';
+import { sessionCookieName, sessionCookieOptions } from '../../server/admin/settings.ts';
+import { getDatabase } from '../../server/database.ts';
+
+export const prerender = false;
+
+const admin = Astro.locals.admin;
+if (admin.active) {
+  return Astro.redirect(
+    admin.active.account.mustChangePassword ? '/admin/mot-de-passe' : '/admin/comptes',
+    303,
+  );
+}
+
+let error: string | undefined;
+let email = '';
+if (Astro.request.method === 'POST') {
+  const form = await readForm(Astro.request);
+  email = formText(form, 'email');
+  const { db } = await getDatabase();
+  const result = await attemptLogin(db, admin.settings, {
+    email,
+    password: formText(form, 'password'),
+    ip: admin.ip,
+    userAgent: Astro.request.headers.get('user-agent') ?? '',
+  });
+  if (result.ok) {
+    Astro.cookies.set(sessionCookieName, result.token, sessionCookieOptions(admin.settings));
+    return Astro.redirect(
+      result.mustChangePassword ? '/admin/mot-de-passe' : '/admin/comptes',
+      303,
+    );
+  }
+  if (result.reason === 'limited') {
+    error = limitedText(result.retryAfterSeconds);
+    Astro.response.status = 429;
+    Astro.response.headers.set('Retry-After', String(result.retryAfterSeconds));
+  } else {
+    error = a('login.invalid');
+    Astro.response.status = 401;
+  }
+}
+---
+
+<AdminLayout title={a('login.title')} bare>
+  <div class="admin-narrow stack">
+    <h1>{a('login.title')}</h1>
+    <p>{a('login.intro')}</p>
+    {error && (
+      <div class="alert" role="alert" data-testid="login-error">
+        <span class="label">{a('common.error')}</span>
+        <p>{error}</p>
+      </div>
+    )}
+    <form method="post" action="/admin/connexion" class="stack">
+      <div class="field">
+        <label for="email">{a('login.email')}</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          autocomplete="username"
+          required
+          value={email}
+        />
+      </div>
+      <div class="field">
+        <label for="password">{a('login.password')}</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          required
+        />
+      </div>
+      <button class="button" type="submit">
+        {a('login.submit')}
+      </button>
+    </form>
+  </div>
+</AdminLayout>

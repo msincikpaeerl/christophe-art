@@ -9,7 +9,7 @@ A custom server-rendered website (public pages must be indexable) with an admin 
 
 ## Current state
 
-Foundation, visual identity and bilingual routing (`/fr/...`, `/en/...`). Public pages are placeholders, plus `GET /health`. Interface texts always go through `src/i18n/` dictionaries.
+Foundation, visual identity and bilingual routing (`/fr/...`, `/en/...`). Public pages are placeholders, plus `GET /health`. Interface texts always go through `src/i18n/` dictionaries. The admin area (`/admin`, French only, texts in `src/admin/messages.ts`) has accounts, password login, sessions and an activity log; every page under `src/pages/admin/` is protected by `src/middleware.ts` by default (see `docs/dev/architecture.md`, ADR 0011).
 
 ## Read before working
 
@@ -37,6 +37,8 @@ Package manager: pnpm (`npm install --global pnpm@12.15.0`), Node 24.21.0 (`.nvm
 | Build                                      | `pnpm build`                                      |
 | Generate a migration after a schema change | `pnpm db:generate`                                |
 | Apply migrations                           | `pnpm db:migrate`                                 |
+| Create an admin account (server command)   | `pnpm admin:create --email … --name "…"`          |
+| Reset an admin password (server command)   | `pnpm admin:reset-password --email …`             |
 | Dev server (agents never start it)         | `pnpm dev`                                        |
 | Start the built site                       | `pnpm start`                                      |
 | Security audit (fails on high/critical)    | `pnpm audit --audit-level high`                   |
@@ -51,6 +53,8 @@ src/styles/       Design tokens (tokens.css, the only place for raw values) and 
 src/components/   Header, footer and other Astro components; src/layouts/ holds the page frame
 public/fonts/     Self-hosted fonts with their licences
 src/server/       Framework-free server code: config, database, schema, health, logger, start scripts
+src/server/admin/ Admin logic: passwords, accounts, sessions, login limits, activity log, request guard
+src/admin/        French interface texts of the admin; src/middleware.ts guards every /admin request
 src/test-support/ Test helpers (createTestDatabase: PGlite or real PostgreSQL)
 drizzle/          Generated, committed SQL migrations
 e2e/              Playwright tests (desktop and phone)

@@ -5,3 +5,4 @@ drizzle/
 pnpm-lock.yaml
 playwright-report/
 test-results/
+.e2e-db/

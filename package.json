@@ -20,6 +20,8 @@
     "test:integration": "vitest run --project integration",
     "test:e2e": "playwright test",
     "docs:links": "remark . --frail --quiet --no-stdout",
+    "admin:create": "node --env-file-if-exists=.env src/server/admin-cli.ts create",
+    "admin:reset-password": "node --env-file-if-exists=.env src/server/admin-cli.ts reset-password",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=.env src/server/migrate-cli.ts",
     "verify": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm docs:links && pnpm build"
