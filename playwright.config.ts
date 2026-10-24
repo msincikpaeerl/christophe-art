@@ -25,6 +25,7 @@ export default defineConfig({
       PORT: port,
       DATABASE_URL: 'pglite://memory',
       LOG_LEVEL: 'warn',
+      DEV_PAGES: 'true',
     },
   },
 });

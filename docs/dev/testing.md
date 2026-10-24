@@ -28,6 +28,13 @@ Each test file asks `createTestDatabase()` (`src/test-support/database.ts`) for 
 
 `pnpm test:e2e` builds the site, starts it on port 4322 with an in-memory database, and runs the tests on a desktop and a phone viewport. First time on a machine: `pnpm exec playwright install chromium` (on Linux add `--with-deps` to install the system libraries; it needs administrator rights).
 
+### Design checks
+
+- `src/styles/design.test.ts` (unit) checks WCAG AA contrast of the text/background token pairs, that no raw colour value appears outside `src/styles/tokens.css`, that every token used is defined, and that the fonts are self-hosted with their licences.
+- `e2e/design.spec.ts` checks the header and footer, the 360 px layout, keyboard focus, reduced motion, the hexagon pattern placement, that no request leaves the site, and takes a full-page screenshot of the showcase page `/dev/design` (served only when `DEV_PAGES=true`, which the e2e server sets).
+
+The screenshot is compared with a baseline in `e2e/design.spec.ts-snapshots/` when one is committed. Without a baseline it is only taken and attached to the test report. To create or refresh the baselines, run `pnpm test:e2e --update-snapshots` on Linux (the CI image, or the `e2e-results` artifact of the CI run) and commit the PNG files. Review them by eye before committing.
+
 ## Rules
 
 - New behaviour needs tests; a bug fix starts with a failing regression test.

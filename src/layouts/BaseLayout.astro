@@ -1,0 +1,44 @@
+---
+import '../styles/global.css';
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import { labels, type Locale } from '../site.ts';
+
+interface Props {
+  title: string;
+  description: string;
+  locale?: Locale;
+  alternates?: Record<Locale, string>;
+  /** Keeps the page out of search engines (development pages). */
+  noindex?: boolean;
+}
+
+const { title, description, locale = 'en', alternates, noindex = false } = Astro.props;
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex" />}
+  </head>
+  <body>
+    <a class="skip-link" href="#content">
+      {labels[locale].skip}
+    </a>
+    <SiteHeader locale={locale} alternates={alternates} />
+    <main id="content">
+      <slot />
+    </main>
+    <SiteFooter locale={locale} />
+  </body>
+</html>
+
+<style>
+  main {
+    flex: 1;
+  }
+</style>

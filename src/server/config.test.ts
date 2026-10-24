@@ -21,6 +21,11 @@ describe('loadConfig', () => {
     expect(config.LOG_LEVEL).toBe('debug');
   });
 
+  it('keeps the development pages off unless asked', () => {
+    expect(loadConfig(valid).DEV_PAGES).toBe(false);
+    expect(loadConfig({ ...valid, DEV_PAGES: 'true' }).DEV_PAGES).toBe(true);
+  });
+
   it('names a missing variable', () => {
     expect(() => loadConfig({})).toThrow(ConfigError);
     expect(() => loadConfig({})).toThrow(/DATABASE_URL: is required but missing/);

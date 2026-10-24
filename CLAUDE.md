@@ -46,6 +46,9 @@ Package manager: pnpm (`npm install --global pnpm@12.15.0`), Node 24.21.0 (`.nvm
 
 ```
 src/pages/        Astro pages and endpoints (index.astro, health.ts)
+src/styles/       Design tokens (tokens.css, the only place for raw values) and base styles
+src/components/   Header, footer and other Astro components; src/layouts/ holds the page frame
+public/fonts/     Self-hosted fonts with their licences
 src/server/       Framework-free server code: config, database, schema, health, logger, start scripts
 src/test-support/ Test helpers (createTestDatabase: PGlite or real PostgreSQL)
 drizzle/          Generated, committed SQL migrations
@@ -61,6 +64,7 @@ docs/adr/         Architecture Decision Records
 
 ## Conventions
 
+- UI follows `docs/design.md`: use `var(--token)` from `src/styles/tokens.css`, never a raw colour (a test fails). Add new components to `/dev/design`.
 - Commits follow Conventional Commits with the ticket number: `feat(WEB-12): add contact form`.
 - Every significant technical choice gets an ADR: copy `docs/adr/0000-template.md`, next number.
 - A user-visible change updates `docs/user/` and `CHANGELOG.md` in the same pull request.
