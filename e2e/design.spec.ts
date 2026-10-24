@@ -99,7 +99,9 @@ test.describe('motion', () => {
       .evaluate((node) => getComputedStyle(node).transitionDuration);
   }
   async function animationOfLoading(page: Page) {
-    return page.getByRole('status').evaluate((node) => getComputedStyle(node).animationName);
+    return page
+      .locator('.loading[role="status"]')
+      .evaluate((node) => getComputedStyle(node).animationName);
   }
 
   test('transitions and animations run by default', async ({ page }) => {
