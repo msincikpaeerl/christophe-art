@@ -8,6 +8,13 @@
       "when": 1792796419648,
       "tag": "0000_true_infant_terrible",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792834458199,
+      "tag": "0001_last_black_knight",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,100 @@
+---
+// The signed-in admin's own sessions: device, last activity, and a button to close each one.
+import { a, dateTimeText } from '../../admin/messages.ts';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { recordActivity } from '../../server/admin/activity.ts';
+import { describeDevice } from '../../server/admin/device.ts';
+import { formText, readForm } from '../../server/admin/form.ts';
+import { listSessions, revokeSession } from '../../server/admin/sessions.ts';
+import { sessionCookieName } from '../../server/admin/settings.ts';
+import { getDatabase } from '../../server/database.ts';
+
+export const prerender = false;
+
+const admin = Astro.locals.admin;
+const active = admin.active;
+if (!active) return Astro.redirect('/admin/connexion', 303);
+
+const { db } = await getDatabase();
+const deviceText = (userAgent: string) => {
+  const { browser, system } = describeDevice(userAgent);
+  if (browser && system) return `${browser} ${a('common.on')} ${system}`;
+  return browser ?? system ?? a('common.unknownDevice');
+};
+
+let notice: string | undefined;
+if (Astro.request.method === 'POST') {
+  const form = await readForm(Astro.request);
+  const sessionId = formText(form, 'id');
+  const target = (await listSessions(db, active.account.id)).find(
+    (session) => session.id === sessionId,
+  );
+  if (target && (await revokeSession(db, active.account.id, target.id))) {
+    await recordActivity(db, {
+      action: 'session_revoked',
+      actor: active.account.displayName,
+      target: `${active.account.displayName} (${deviceText(target.userAgent)})`,
+      ip: admin.ip,
+    });
+    if (target.id === active.session.id) {
+      Astro.cookies.delete(sessionCookieName, { path: '/admin' });
+      return Astro.redirect('/admin/connexion', 303);
+    }
+    notice = a('sessions.revoked');
+  }
+}
+
+const sessions = await listSessions(db, active.account.id);
+---
+
+<AdminLayout title={a('sessions.title')}>
+  <div class="stack">
+    <h1>{a('sessions.title')}</h1>
+    <p>{a('sessions.intro')}</p>
+    {notice && (
+      <div class="alert" role="status" data-testid="sessions-notice">
+        <span class="label">{a('common.notice')}</span>
+        <p>{notice}</p>
+      </div>
+    )}
+    <div class="table-wrap">
+      <table class="admin-table" aria-label={a('sessions.list')}>
+        <thead>
+          <tr>
+            <th scope="col">{a('sessions.device')}</th>
+            <th scope="col">{a('sessions.ip')}</th>
+            <th scope="col">{a('sessions.opened')}</th>
+            <th scope="col">{a('sessions.lastActivity')}</th>
+            <th scope="col">{a('accounts.actions')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sessions.map((session) => (
+            <tr data-current={session.id === active.session.id ? 'true' : undefined}>
+              <td>
+                {deviceText(session.userAgent)}
+                {session.id === active.session.id && (
+                  <>
+                    <br />
+                    <span class="plate">{a('sessions.current')}</span>
+                  </>
+                )}
+              </td>
+              <td>{session.ip}</td>
+              <td>{dateTimeText(session.createdAt)}</td>
+              <td>{dateTimeText(session.lastActivityAt)}</td>
+              <td>
+                <form method="post" action="/admin/sessions">
+                  <input type="hidden" name="id" value={session.id} />
+                  <button class="button" type="submit">
+                    {a('sessions.revoke')}
+                  </button>
+                </form>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</AdminLayout>

@@ -1,0 +1,108 @@
+---
+// An admin changes their own password; also the only page open while the password is temporary.
+import { a, errorText } from '../../admin/messages.ts';
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { changeOwnPassword } from '../../server/admin/accounts.ts';
+import { formText, readForm } from '../../server/admin/form.ts';
+import { getDatabase } from '../../server/database.ts';
+
+export const prerender = false;
+
+const admin = Astro.locals.admin;
+const active = admin.active;
+if (!active) return Astro.redirect('/admin/connexion', 303);
+
+let error: string | undefined;
+let done = false;
+let mustChange = active.account.mustChangePassword;
+if (Astro.request.method === 'POST') {
+  const form = await readForm(Astro.request);
+  const current = formText(form, 'current');
+  const next = formText(form, 'new');
+  if (current === '' || next === '') {
+    error = errorText('missing');
+  } else if (next !== formText(form, 'confirm')) {
+    error = errorText('mismatch');
+  } else {
+    const { db } = await getDatabase();
+    const result = await changeOwnPassword(db, {
+      account: active.account,
+      currentPassword: current,
+      newPassword: next,
+      keepSessionId: active.session.id,
+      ip: admin.ip,
+    });
+    if (result.ok) {
+      done = true;
+      mustChange = false;
+    } else {
+      error = errorText(result.error);
+    }
+  }
+  if (error) Astro.response.status = 422;
+}
+---
+
+<AdminLayout title={a('password.title')} bare={mustChange}>
+  <div class="admin-narrow stack">
+    <h1>{a('password.title')}</h1>
+    {mustChange && (
+      <div class="alert" data-testid="must-change">
+        <span class="label">{a('common.notice')}</span>
+        <p>{a('password.mustChange')}</p>
+      </div>
+    )}
+    {done && (
+      <div class="alert" role="status" data-testid="password-done">
+        <span class="label">{a('common.notice')}</span>
+        <p>{a('password.done')}</p>
+      </div>
+    )}
+    {error && (
+      <div class="alert" role="alert" data-testid="password-error">
+        <span class="label">{a('common.error')}</span>
+        <p>{error}</p>
+      </div>
+    )}
+    <form method="post" action="/admin/mot-de-passe" class="stack">
+      <div class="field">
+        <label for="current">{a('password.current')}</label>
+        <input
+          id="current"
+          name="current"
+          type="password"
+          autocomplete="current-password"
+          required
+        />
+      </div>
+      <div class="field">
+        <label for="new">{a('password.new')}</label>
+        <input
+          id="new"
+          name="new"
+          type="password"
+          autocomplete="new-password"
+          minlength="12"
+          maxlength="128"
+          required
+        />
+        <p class="hint">{a('password.newHint')}</p>
+      </div>
+      <div class="field">
+        <label for="confirm">{a('password.confirm')}</label>
+        <input
+          id="confirm"
+          name="confirm"
+          type="password"
+          autocomplete="new-password"
+          minlength="12"
+          maxlength="128"
+          required
+        />
+      </div>
+      <button class="button" type="submit">
+        {a('password.submit')}
+      </button>
+    </form>
+  </div>
+</AdminLayout>

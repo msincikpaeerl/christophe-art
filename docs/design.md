@@ -84,6 +84,17 @@ Short and discreet: fades and a slight lift on hover (`--motion-fast`, `--motion
 
 The FR / EN switch in the header uses the same style as the menu links: label font (`--font-label`, `--text-xs`, uppercase), `--text-muted`, current language in `--text` with a `--accent` underline, `--space-4` between the two, at least `--touch-target` tall. It adds no colour, font or spacing of its own. Texts that fall back to French are wrapped in `lang="fr"` without any visual change.
 
+## Admin variant
+
+The admin area (`/admin`) follows the same identity in a **sober version**, built from the same tokens and nothing else:
+
+- Light background only (`--surface-light`, `--surface-light-raised` for the header, fields and menus). No anthracite section and **no hexagon pattern**.
+- Copper only for actions: links, buttons (`.button`), the current navigation item and the focus ring. Never a fill.
+- Headings in `--font-heading`, labels and table headings in `--font-label`, everything else in `--font-body`. Sizes from the `--text-*` scale, spacing from `--space-*`.
+- Messages (`.alert`) use a strong line (`--line-width-strong`, `--text`) and a plate label ("Erreur", "Information") instead of a new colour, so they do not rely on colour alone. A secret shown once (a temporary password) uses `.secret` in the label font.
+- Tables sit in `.table-wrap`, which scrolls inside its frame: the page never scrolls sideways. The navigation wraps on a phone and the account menu is a native `<details>` (no script). Fields and buttons are at least `--touch-target` tall.
+- The admin styles are in `src/styles/admin.css`; the layout is `src/layouts/AdminLayout.astro`. The admin is in French only; texts are in `src/admin/messages.ts`.
+
 ## Components
 
-`SiteHeader` (artist name, navigation, FR/EN switch), `SiteFooter` (anthracite; legal pages, social link), `HexPattern`, `LoadingState`, `ArtworkCard`, `LocalizedText`, and the layout `src/layouts/BaseLayout.astro`. Add each new component to `/dev/design`.
+`SiteHeader` (artist name, navigation, FR/EN switch), `SiteFooter` (anthracite; legal pages, social link), `HexPattern`, `LoadingState`, `ArtworkCard`, `LocalizedText`, and the layout `src/layouts/BaseLayout.astro`. The admin has its own layout `src/layouts/AdminLayout.astro` and the classes `.field`, `.alert`, `.secret`, `.table-wrap` / `.admin-table`, `.row-actions` and `.pager`, shown in the "Admin" part of `/dev/design`. Add each new component to `/dev/design`.

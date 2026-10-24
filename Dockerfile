@@ -23,6 +23,8 @@ ENV NODE_ENV=production \
     PORT=4321 \
     UPLOADS_DIR=/data/uploads
 WORKDIR /app
+# pnpm is kept in the image so that `docker compose exec app pnpm admin:create` works.
+RUN npm install --global pnpm@12.15.0
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY package.json ./
